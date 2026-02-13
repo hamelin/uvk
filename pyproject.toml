@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "uvk"
-version = "0.1.0"
+version = "0.0.1"
 authors = [{name = "Benoit Hamelin", email = "benoit.hamelin@gmail.com"}]
 maintainers = [{name = "Benoit Hamelin", email = "benoit.hamelin@gmail.com"}]
 description = "Fully isolated IPython kernels based on uv"
@@ -16,7 +16,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 2 - Pre-Alpha",
     "Operating System :: OS Independent",
 ]
 requires-python = ">=3.10"
