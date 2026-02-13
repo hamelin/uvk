@@ -1,0 +1,36 @@
+[build-system]
+requires = ["uv_build>=0.10.2"]
+build-backend = "uv_build"
+
+[project]
+name = "uvk"
+version = "0.1.0"
+authors = [{name = "Benoit Hamelin", email = "benoit.hamelin@gmail.com"}]
+maintainers = [{name = "Benoit Hamelin", email = "benoit.hamelin@gmail.com"}]
+description = "Fully isolated IPython kernels based on uv"
+readme = "README.md"
+keywords = ["jupyter", "kernel", "ipython", "ipykernel", "uv"]
+license = "MIT"
+classifiers = [
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Development Status :: 3 - Alpha",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "ipykernel>=7.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/hamelin/uvk"
+
+[project.scripts]
+uvk = "uvk.__main__:main"
+
+[tool.setuptools]
+zip-safe = true
+include-package-data = true
+packages = ["uvk"]
