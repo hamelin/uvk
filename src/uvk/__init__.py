@@ -5,7 +5,6 @@ by the IPython process, as shelling out to uv is how most of the kernel's
 specific functionalities are delivered.
 """
 
-
 from IPython.core.magic import cell_magic, line_magic, line_cell_magic
 import subprocess as sp
 

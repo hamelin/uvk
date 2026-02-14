@@ -6,7 +6,6 @@ import shutil
 import subprocess as sp
 import sys
 
-
 LOG = lg.getLogger("uvk")
 
 
@@ -22,8 +21,7 @@ def main():
         default="uvk",
     )
     displayname_default = (
-        f"UVK (Python "
-        f"{sys.version_info.major}.{sys.version_info.minor})"
+        f"UVK (Python " f"{sys.version_info.major}.{sys.version_info.minor})"
     )
     parser.add_argument(
         "--display-name",
