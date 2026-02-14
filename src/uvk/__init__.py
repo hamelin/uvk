@@ -8,7 +8,6 @@ specific functionalities are delivered.
 
 from IPython.core.magic import cell_magic, line_magic, line_cell_magic
 import subprocess as sp
-import warnings
 
 
 class CannotFindUV(Exception):

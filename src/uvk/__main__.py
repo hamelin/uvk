@@ -21,7 +21,10 @@ def main():
         help="Name of the kernelspec. Default is `uvk`.",
         default="uvk",
     )
-    displayname_default = f"UVK (Python {sys.version_info.major}.{sys.version_info.minor})"
+    displayname_default = (
+        f"UVK (Python "
+        f"{sys.version_info.major}.{sys.version_info.minor})"
+    )
     parser.add_argument(
         "--display-name",
         help=(
@@ -40,13 +43,13 @@ def main():
     path_uv = shutil.which("uv")
     if not path_uv:
         LOG.error("Cannot find jupyter executable. Abort")
-        sys.exit(cp.returncode)
+        sys.exit(1)
 
     cp = sp.run(["jupyter", "--paths", "--json"], stdout=sp.PIPE)
     paths_data = list(json.loads(cp.stdout).get("data") or [])
     if not paths_data:
         LOG.error("Cannot interpret the output of jupyter --paths. Abort")
-        sys.exit(1)
+        sys.exit(2)
     for p in paths_data:
         dir = Path(p)
         if dir.is_relative_to(Path.home() / ".local"):
@@ -57,15 +60,17 @@ def main():
             "Cannot find the user data path where Jupyter would find "
             "user-specific kernelspecs. Abort"
         )
-        sys.exit(2)
+        sys.exit(3)
 
-    path_kernelspec_resources = Path(sys.prefix) / "share" / "jupyter" / "kernels" / "python3"
+    path_kernelspec_resources = (
+        Path(sys.prefix) / "share" / "jupyter" / "kernels" / "python3"
+    )
     if not path_kernelspec_resources.is_dir():
         LOG.error(
             "The directory we expected to find kernelspec resources in does"
             "not exist. Abort"
         )
-        sys.exit(3)
+        sys.exit(4)
     dir_kernelspec_new = dir_kernelspecs_user / args.name
     if dir_kernelspec_new.is_dir():
         LOG.warn(
@@ -74,7 +79,7 @@ def main():
             "we err on the side of caution and abort. "
             "Delete it yourself and retry if you would rather overwrite."
         )
-        sys.exit(4)
+        sys.exit(5)
     dir_kernelspec_new.mkdir(parents=True, exist_ok=False)
     for p in path_kernelspec_resources.iterdir():
         shutil.copy(p, dir_kernelspec_new / p.name, follow_symlinks=True)
@@ -82,7 +87,7 @@ def main():
     path_kernel_json = dir_kernelspec_new / "kernel.json"
     if not path_kernel_json.is_file():
         LOG.error("Copying kernelspec resources failed somehow. Abort")
-        sys.exit(5)
+        sys.exit(6)
     kernel_json = json.loads(path_kernel_json.read_text(encoding="utf-8"))
     kernel_json["argv"] = [
         str(path_uv),

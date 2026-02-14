@@ -36,3 +36,11 @@ uvk = "uvk.__main__:main"
 zip-safe = true
 include-package-data = true
 packages = ["uvk"]
+
+[dependency-groups]
+dev = [
+    "flake8>=7.3.0",
+    "mypy>=1.19.1",
+    "mypy-extensions>=1.1.0",
+    "pytest>=9.0.2",
+]
