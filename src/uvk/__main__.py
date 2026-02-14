@@ -1,17 +1,19 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
+from jupyter_core.paths import jupyter_path
 import json
 import logging as lg
 from pathlib import Path
 import shutil
-import subprocess as sp
 import sys
 
 LOG = lg.getLogger("uvk")
 
 
-def main():
-    lg.basicConfig(level=lg.DEBUG, format="%(levelname)-10s %(message)s")
+def display_name_default():
+    return f"UVK (Python " f"{sys.version_info.major}.{sys.version_info.minor})"
 
+
+def parse_args(args: list[str] | None = None) -> Namespace:
     parser = ArgumentParser(
         description="Deploys the UVK kernel",
     )
@@ -20,37 +22,34 @@ def main():
         help="Name of the kernelspec. Default is `uvk`.",
         default="uvk",
     )
-    displayname_default = (
-        f"UVK (Python " f"{sys.version_info.major}.{sys.version_info.minor})"
-    )
     parser.add_argument(
         "--display-name",
         help=(
             "Pretty name for the kernelspec that will show in Jupyter "
-            f"interface. Default is `{displayname_default}`."
+            f"interface. Default is `{display_name_default()}`."
         ),
-        default=displayname_default,
+        default=display_name_default(),
     )
     parser.add_argument(
         "--tmp",
         help="Location of the temporary directory. Default is the system's.",
         default="",
     )
-    args = parser.parse_args()
+    return parser.parse_args(args)
+
+
+def main():
+    lg.basicConfig(level=lg.DEBUG, format="%(levelname)-10s %(message)s")
+    args = parse_args()
 
     path_uv = shutil.which("uv")
     if not path_uv:
-        LOG.error("Cannot find jupyter executable. Abort")
+        LOG.error("Cannot find uv executable")
         sys.exit(1)
 
-    cp = sp.run(["jupyter", "--paths", "--json"], stdout=sp.PIPE)
-    paths_data = list(json.loads(cp.stdout).get("data") or [])
-    if not paths_data:
-        LOG.error("Cannot interpret the output of jupyter --paths. Abort")
-        sys.exit(2)
-    for p in paths_data:
+    for p in jupyter_path("kernels"):
         dir = Path(p)
-        if dir.is_relative_to(Path.home() / ".local"):
+        if dir.is_relative_to(Path.home()) and not dir.is_relative_to(sys.prefix):
             dir_kernelspecs_user = dir / "kernels"
             break
     else:
