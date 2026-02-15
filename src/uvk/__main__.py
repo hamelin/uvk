@@ -1,6 +1,7 @@
 from argparse import Action, ArgumentParser, Namespace
-from collections.abc import Sequence
-from jupyter_core.paths import jupyter_data_dir, jupyter_path
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
+from jupyter_core.paths import jupyter_data_dir
 import json
 import logging as lg
 from pathlib import Path
@@ -9,6 +10,16 @@ import sys
 from typing import Protocol
 
 LOG = lg.getLogger("uvk")
+KernelSpec = dict
+
+
+try:
+    PATH_UV = Path(shutil.which("uv"))  # type: ignore
+except TypeError:
+    raise OSError(
+        "Cannot find the uv executable in the current environment; "
+        "consider reinstalling uvk."
+    )
 
 
 def display_name_default() -> str:
@@ -47,7 +58,11 @@ class ParametersInstall(Protocol):
     def dir_data(self) -> Path: ...
 
     @property
-    def env(self) -> dict[str, str]: ...
+    def env(self) -> list[tuple[str, str]] | None: ...
+
+
+def dir_data_default() -> Path:
+    return Path(sys.prefix) / "share" / "jupyter"
 
 
 def parse_args(args: list[str] | None = None) -> ParametersInstall:
@@ -84,10 +99,10 @@ def parse_args(args: list[str] | None = None) -> ParametersInstall:
         "--sys-prefix",
         dest="dir_data",
         action="store_const",
-        const=Path(sys.prefix) / "share" / "jupyter",
+        const=dir_data_default(),
         help=(
             f"Install the kernel in the current environment; equivalent to "
-            f"--prefix={sys.prefix}"
+            f"--prefix={sys.prefix}. This is the default."
         ),
     )
     parser.add_argument(
@@ -107,75 +122,87 @@ def parse_args(args: list[str] | None = None) -> ParametersInstall:
             "instantiated."
         ),
     )
-    return parser.parse_args(args)
+    params = parser.parse_args(args)
+    if not params.dir_data:
+        params.dir_data = dir_data_default()
+    return params
+
+
+class KernelSpecAlreadyExists(Exception):
+
+    def __init__(self, path_kernelspec: Path) -> None:
+        self.path_kernelspec = path_kernelspec
+        super().__init__(f"Kernelspec already exists at path {path_kernelspec}")
+
+
+@contextmanager
+def install_kernelspec(params: ParametersInstall) -> Iterator[tuple[Path, KernelSpec]]:
+    path_kernelspec = params.dir_data / "kernels" / params.name
+    path_kernel_json = path_kernelspec / "kernel.json"
+    if path_kernelspec.is_dir() and path_kernel_json.is_file():
+        raise KernelSpecAlreadyExists(path_kernelspec)
+
+    try:
+        path_kernelspec.mkdir(parents=True, exist_ok=False)
+
+        path_resources_kernelspec = (
+            Path(sys.prefix) / "share" / "jupyter" / "kernels" / "python3"
+        )
+        assert path_resources_kernelspec.is_dir()
+        for p in path_resources_kernelspec.iterdir():
+            # TBD: use own icons
+            shutil.copy(p, path_kernelspec / p.name)
+
+        assert path_kernel_json.is_file()
+        kernelspec = json.loads(path_kernel_json.read_text(encoding="utf-8"))
+        assert "argv" in kernelspec
+        kernelspec["argv"] = [
+            str(PATH_UV),
+            "run",
+            "--with",
+            "uvk",
+            "--isolated",
+            "--no-cache",
+            "python",
+            "-m",
+            "ipykernel_launcher",
+            "-f",
+            "{connection_file}",
+        ]
+        kernelspec["display_name"] = params.display_name
+        if params.env:
+            kernelspec.setdefault("env", {}).update(dict(params.env))
+
+        yield path_kernelspec, kernelspec
+
+        path_kernel_json.write_text(json.dumps(kernelspec), encoding="utf-8")
+    except Exception as err:
+        LOG.warning(
+            f"Following {type(err).__name__} {err}, incipient kernelspec at "
+            f"{path_kernelspec} is destroyed"
+        )
+        shutil.rmtree(path_kernelspec, ignore_errors=True)
+        raise
 
 
 def main():
-    lg.basicConfig(level=lg.DEBUG, format="%(levelname)-10s %(message)s")
-    args = parse_args()
+    lg.basicConfig(level=lg.WARNING, format="%(message)s")
+    params = parse_args()
 
-    path_uv = shutil.which("uv")
-    if not path_uv:
-        LOG.error("Cannot find uv executable")
+    try:
+        with install_kernelspec(params) as (dir_kernelspec, _):
+            LOG.info(f"UVK kernelspec added at {dir_kernelspec}")
+    except KernelSpecAlreadyExists as err:
+        LOG.error(
+            f"Kernelspec already exists at path {err.path_kernelspec}. "
+            "Erring on the side of caution, we refuse to clobber it. "
+            "If you mean to replace it, first remove it with "
+            "`jupyter kernelspec remove` before attempting this command again."
+        )
+        sys.exit(2)
+    except Exception as err:
+        LOG.critical(f"{type(err).__name__}: {err}; abort")
         sys.exit(1)
-
-    for p in jupyter_path("kernels"):
-        dir = Path(p)
-        if dir.is_relative_to(Path.home()) and not dir.is_relative_to(sys.prefix):
-            dir_kernelspecs_user = dir / "kernels"
-            break
-    else:
-        LOG.error(
-            "Cannot find the user data path where Jupyter would find "
-            "user-specific kernelspecs. Abort"
-        )
-        sys.exit(3)
-
-    path_kernelspec_resources = (
-        Path(sys.prefix) / "share" / "jupyter" / "kernels" / "python3"
-    )
-    if not path_kernelspec_resources.is_dir():
-        LOG.error(
-            "The directory we expected to find kernelspec resources in does"
-            "not exist. Abort"
-        )
-        sys.exit(4)
-    dir_kernelspec_new = dir_kernelspecs_user / args.name
-    if dir_kernelspec_new.is_dir():
-        LOG.warn(
-            f"Kernel directory {dir_kernelspec_new} already exists. "
-            "Since carrying on would overwrite it, "
-            "we err on the side of caution and abort. "
-            "Delete it yourself and retry if you would rather overwrite."
-        )
-        sys.exit(5)
-    dir_kernelspec_new.mkdir(parents=True, exist_ok=False)
-    for p in path_kernelspec_resources.iterdir():
-        shutil.copy(p, dir_kernelspec_new / p.name, follow_symlinks=True)
-
-    path_kernel_json = dir_kernelspec_new / "kernel.json"
-    if not path_kernel_json.is_file():
-        LOG.error("Copying kernelspec resources failed somehow. Abort")
-        sys.exit(6)
-    kernel_json = json.loads(path_kernel_json.read_text(encoding="utf-8"))
-    kernel_json["argv"] = [
-        str(path_uv),
-        "run",
-        "--with",
-        "uvk",
-        "--isolated",
-        "--no-cache",
-        "python",
-        "-m",
-        "ipykernel_launcher",
-        "-f",
-        "{connection_file}",
-    ]
-    kernel_json["display_name"] = args.display_name
-    if args.tmp:
-        kernel_json["env"] = {"TMPDIR": args.tmp}
-    path_kernel_json.write_text(json.dumps(kernel_json, indent=2), encoding="utf-8")
-    LOG.info(f"UVK kernelspec added at {dir_kernelspec_new}")
 
 
 if __name__ == "__main__":
