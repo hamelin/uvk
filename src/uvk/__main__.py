@@ -1,4 +1,5 @@
 from argparse import Action, ArgumentParser, Namespace
+from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from jupyter_core.paths import jupyter_data_dir
@@ -60,6 +61,9 @@ class ParametersInstall(Protocol):
     @property
     def env(self) -> list[tuple[str, str]] | None: ...
 
+    @property
+    def quiet(self) -> int: ...
+
 
 def dir_data_default() -> Path:
     return Path(sys.prefix) / "share" / "jupyter"
@@ -120,6 +124,16 @@ def parse_args(args: list[str] | None = None) -> ParametersInstall:
         help=(
             "Set the temporary directory where the kernel's environment will be "
             "instantiated."
+        ),
+    )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="count",
+        default=0,
+        help=(
+            "Quiets out the output chatter. Use up to three times to quiet down to "
+            "critical errors."
         ),
     )
     params = parser.parse_args(args)
@@ -188,12 +202,17 @@ def install_kernelspec(params: ParametersInstall) -> Iterator[tuple[Path, Kernel
 def main():
     lg.basicConfig(level=lg.WARNING, format="%(message)s")
     params = parse_args()
+    LOG.setLevel(
+        defaultdict(lambda: lg.CRITICAL, {0: lg.INFO, 1: lg.WARN, 2: lg.ERROR})[
+            params.quiet
+        ]
+    )
 
     try:
         with install_kernelspec(params) as (dir_kernelspec, _):
             LOG.info(f"UVK kernelspec added at {dir_kernelspec}")
     except KernelSpecAlreadyExists as err:
-        LOG.error(
+        LOG.warn(
             f"Kernelspec already exists at path {err.path_kernelspec}. "
             "Erring on the side of caution, we refuse to clobber it. "
             "If you mean to replace it, first remove it with "

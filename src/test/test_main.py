@@ -20,12 +20,14 @@ def ns(
     display_name: str = display_name_default(),
     dir_data: str | Path = dir_data_default(),
     env: list[tuple[str, str]] | None = None,
+    quiet: int = 0,
 ) -> Namespace:
     return Namespace(
         name=name,
         display_name=display_name,
         dir_data=Path(dir_data),
         env=[list(t) for t in env] if env else None,
+        quiet=quiet,
     )
 
 
@@ -58,6 +60,8 @@ def ns(
                 "--user",
             ],
         ),
+        (ns(quiet=1), ["--quiet"]),
+        (ns(quiet=4), ["-qqq", "--quiet"]),
     ],
 )
 def test_parse_args(expected: ParametersInstall, args: list[str]) -> None:
