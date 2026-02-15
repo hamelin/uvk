@@ -1,5 +1,6 @@
-from argparse import ArgumentParser, Namespace
-from jupyter_core.paths import jupyter_path
+from argparse import Action, ArgumentParser, Namespace
+from collections.abc import Sequence
+from jupyter_core.paths import jupyter_data_dir, jupyter_path
 import json
 import logging as lg
 from pathlib import Path
@@ -9,8 +10,28 @@ import sys
 LOG = lg.getLogger("uvk")
 
 
-def display_name_default():
+def display_name_default() -> str:
     return f"UVK (Python " f"{sys.version_info.major}.{sys.version_info.minor})"
+
+
+class DefineTMPDIR(Action):
+
+    def __init__(self, option_strings, dest, nargs=None, **kwargs) -> None:
+        if nargs is not None:
+            raise ValueError("nargs not allowed")
+        super().__init__(option_strings, dest, **kwargs)
+
+    def __call__(
+        self,
+        parser: ArgumentParser,
+        ns: Namespace,
+        values: str | Sequence | None,
+        option_string: str | None = None,
+    ) -> None:
+        assert isinstance(values, str)
+        if not ns.env:
+            ns.env = []
+        ns.env.append(["TMPDIR", values])
 
 
 def parse_args(args: list[str] | None = None) -> Namespace:
@@ -31,9 +52,44 @@ def parse_args(args: list[str] | None = None) -> Namespace:
         default=display_name_default(),
     )
     parser.add_argument(
+        "--user",
+        dest="dir_data",
+        action="store_const",
+        const=Path(jupyter_data_dir()),
+        help="Install the kernel in user's space.",
+    )
+    parser.add_argument(
+        "--prefix",
+        dest="dir_data",
+        type=lambda d: Path(d) / "share" / "jupyter",
+        help="Install the kernel in the Python distribution at the given prefix path.",
+    )
+    parser.add_argument(
+        "--sys-prefix",
+        dest="dir_data",
+        action="store_const",
+        const=Path(sys.prefix) / "share" / "jupyter",
+        help=(
+            f"Install the kernel in the current environment; equivalent to "
+            f"--prefix={sys.prefix}"
+        ),
+    )
+    parser.add_argument(
+        "--env",
+        dest="env",
+        action="append",
+        nargs=2,
+        metavar="VARIABLE VALUE",
+        help="Define the given environment variable as the kernel is started.",
+    )
+    parser.add_argument(
         "--tmp",
-        help="Location of the temporary directory. Default is the system's.",
-        default="",
+        dest="env",
+        action=DefineTMPDIR,
+        help=(
+            "Set the temporary directory where the kernel's environment will be "
+            "instantiated."
+        ),
     )
     return parser.parse_args(args)
 
