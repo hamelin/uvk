@@ -67,6 +67,9 @@ class ParametersInstall(Protocol):
     @property
     def python(self) -> str | None: ...
 
+    @property
+    def is_force_overwrite(self) -> bool: ...
+
 
 def dir_data_default() -> Path:
     return Path(sys.prefix) / "share" / "jupyter"
@@ -152,6 +155,17 @@ def parse_args(args: list[str] | None = None) -> ParametersInstall:
             f"as {sys.executable}."
         ),
     )
+    parser.add_argument(
+        "-f",
+        dest="is_force_overwrite",
+        default=False,
+        action="store_true",
+        help=(
+            "If a kernel already exists where the new one is being installed, "
+            "it is clobbered. The default is to abort the installation and "
+            "avoid clobbering."
+        ),
+    )
     params = parser.parse_args(args)
     if not params.dir_data:
         params.dir_data = dir_data_default()
@@ -170,7 +184,10 @@ def install_kernelspec(params: ParametersInstall) -> Iterator[tuple[Path, Kernel
     path_kernelspec = params.dir_data / "kernels" / params.name
     path_kernel_json = path_kernelspec / "kernel.json"
     if path_kernelspec.is_dir() and path_kernel_json.is_file():
-        raise KernelSpecAlreadyExists(path_kernelspec)
+        if params.is_force_overwrite:
+            shutil.rmtree(path_kernelspec)
+        else:
+            raise KernelSpecAlreadyExists(path_kernelspec)
 
     try:
         path_kernelspec.mkdir(parents=True, exist_ok=False)

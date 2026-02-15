@@ -22,6 +22,7 @@ def ns(
     env: list[tuple[str, str]] | None = None,
     quiet: int = 0,
     python: str | None = None,
+    is_force_overwrite: bool = False,
 ) -> Namespace:
     return Namespace(
         name=name,
@@ -30,6 +31,7 @@ def ns(
         env=[list(t) for t in env] if env else None,
         quiet=quiet,
         python=python,
+        is_force_overwrite=is_force_overwrite,
     )
 
 
@@ -67,6 +69,7 @@ def ns(
         (ns(python="3.11"), ["-p", "3.11"]),
         (ns(python="3.13.3"), ["--python", "3.13.3"]),
         (ns(python=sys.executable), ["-p", sys.executable]),
+        (ns(is_force_overwrite=True), ["-f"]),
     ],
 )
 def test_parse_args(expected: ParametersInstall, args: list[str]) -> None:
@@ -127,9 +130,28 @@ def test_fail_on_overwriting_kernelspec(tmp_path):
         dir_data=tmp_path,
         env=[],
         python=None,
+        is_force_overwrite=False,
     )
     with install_kernelspec(params):
         pass
     with pytest.raises(KernelSpecAlreadyExists):
         with install_kernelspec(params):
             pass
+
+
+def test_clobber_existing_kernelspec(tmp_path):
+    params = Namespace(
+        name="uvktest",
+        display_name="UVK test",
+        dir_data=tmp_path,
+        env=[],
+        python=None,
+        is_force_overwrite=False,
+    )
+    with install_kernelspec(params):
+        pass
+
+    params.display_name = "Clobber"
+    params.is_force_overwrite = True
+    with install_kernelspec(params) as (_, kernelspec):
+        assert kernelspec["display_name"] == "Clobber"
