@@ -16,3 +16,7 @@ pep8: black
 
 black:
 	$(UV_RUN) black src
+
+jupyterlab:
+	uv run uvk --name uvk-test --display-name "UVK TEST" -f --sys-prefix $(UVK_ARGS)
+	uv run --group proto jupyter lab --no-browser
