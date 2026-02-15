@@ -64,6 +64,9 @@ class ParametersInstall(Protocol):
     @property
     def quiet(self) -> int: ...
 
+    @property
+    def python(self) -> str | None: ...
+
 
 def dir_data_default() -> Path:
     return Path(sys.prefix) / "share" / "jupyter"
@@ -136,6 +139,19 @@ def parse_args(args: list[str] | None = None) -> ParametersInstall:
             "critical errors."
         ),
     )
+    parser.add_argument(
+        "-p",
+        "--python",
+        dest="python",
+        default=None,
+        help=(
+            "Set the Python interpreter to use as kernel engine. "
+            "Convention for this parameter mirrors uv's --python option. "
+            "This can be just a Python version number, such as `3.12` or "
+            "`3.13.3`, or the full path to an Python executable, such "
+            f"as {sys.executable}."
+        ),
+    )
     params = parser.parse_args(args)
     if not params.dir_data:
         params.dir_data = dir_data_default()
@@ -175,6 +191,7 @@ def install_kernelspec(params: ParametersInstall) -> Iterator[tuple[Path, Kernel
             "run",
             "--with",
             "uvk",
+            *([] if params.python is None else ["--python", params.python]),
             "--isolated",
             "--no-cache",
             "python",
