@@ -4,7 +4,11 @@ from pathlib import Path  # noqa
 import pytest  # noqa
 import sys
 
-from uvk.__main__ import display_name_default, parse_args
+from uvk.__main__ import (
+    display_name_default,
+    ParametersInstall,
+    parse_args,
+)
 
 
 def ns(
@@ -52,5 +56,5 @@ def ns(
         ),
     ],
 )
-def test_parse_args(expected: Namespace, args: list[str]) -> None:
+def test_parse_args(expected: ParametersInstall, args: list[str]) -> None:
     assert expected == parse_args(args)

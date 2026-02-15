@@ -6,6 +6,7 @@ import logging as lg
 from pathlib import Path
 import shutil
 import sys
+from typing import Protocol
 
 LOG = lg.getLogger("uvk")
 
@@ -34,7 +35,22 @@ class DefineTMPDIR(Action):
         ns.env.append(["TMPDIR", values])
 
 
-def parse_args(args: list[str] | None = None) -> Namespace:
+class ParametersInstall(Protocol):
+
+    @property
+    def name(self) -> str: ...
+
+    @property
+    def display_name(self) -> str: ...
+
+    @property
+    def dir_data(self) -> Path: ...
+
+    @property
+    def env(self) -> dict[str, str]: ...
+
+
+def parse_args(args: list[str] | None = None) -> ParametersInstall:
     parser = ArgumentParser(
         description="Deploys the UVK kernel",
     )
