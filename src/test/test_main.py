@@ -5,7 +5,6 @@ import pytest  # noqa
 import sys
 
 from uvk.__main__ import (
-    dir_data_default,
     display_name_default,
     install_kernelspec,
     KernelSpecAlreadyExists,
@@ -18,20 +17,22 @@ from uvk.__main__ import (
 def ns(
     name: str = "uvk",
     display_name: str = display_name_default(),
-    dir_data: str | Path = dir_data_default(),
+    user: bool = False,
+    replace: bool = False,
+    prefix: Path | None = None,
     env: list[tuple[str, str]] | None = None,
     quiet: int = 0,
     python: str | None = None,
-    is_force_overwrite: bool = False,
 ) -> Namespace:
     return Namespace(
         name=name,
         display_name=display_name,
-        dir_data=Path(dir_data),
+        user=user,
+        replace=replace,
+        prefix=prefix,
         env=[list(t) for t in env] if env else None,
         quiet=quiet,
         python=python,
-        is_force_overwrite=is_force_overwrite,
     )
 
 
@@ -41,9 +42,13 @@ def ns(
         (ns(), []),
         (ns(name="uvk-test"), ["--name", "uvk-test"]),
         (ns(display_name="heyhey"), ["--display-name", "heyhey"]),
-        (ns(dir_data=jupyter_data_dir()), ["--user"]),
-        (ns(dir_data="asdf/qwer/zxcv/share/jupyter"), ["--prefix", "asdf/qwer/zxcv"]),
-        (ns(dir_data=Path(sys.prefix) / "share" / "jupyter"), ["--sys-prefix"]),
+        (ns(user=True, replace=False, prefix=None), ["--user"]),
+        (
+            ns(user=False, replace=False, prefix=Path("asdf/qwer/zxcv")),
+            ["--prefix", "asdf/qwer/zxcv"],
+        ),
+        (ns(user=False, replace=True, prefix=None), ["--replace"]),
+        (ns(user=False, replace=False, prefix=Path(sys.prefix)), ["--sys-prefix"]),
         (ns(env=[("heyhey", "hoho")]), ["--env", "heyhey", "hoho"]),
         (
             ns(env=[("TMPDIR", str(Path.home() / "tmp"))]),
@@ -54,7 +59,7 @@ def ns(
             ["--env", "asdf", "qwer", "--tmp", "heyhey", "--env", "zxcv", "hoho"],
         ),
         (
-            ns(dir_data=jupyter_data_dir(), display_name="nomnom"),
+            ns(display_name="nomnom", user=True, replace=False, prefix=Path("foo/bar")),
             [
                 "--sys-prefix",
                 "--prefix",
@@ -69,7 +74,6 @@ def ns(
         (ns(python="3.11"), ["-p", "3.11"]),
         (ns(python="3.13.3"), ["--python", "3.13.3"]),
         (ns(python=sys.executable), ["-p", sys.executable]),
-        (ns(is_force_overwrite=True), ["-f"]),
     ],
 )
 def test_parse_args(expected: ParametersInstall, args: list[str]) -> None:

@@ -56,7 +56,13 @@ class ParametersInstall(Protocol):
     def display_name(self) -> str: ...
 
     @property
-    def dir_data(self) -> Path: ...
+    def user(self) -> bool: ...
+
+    @property
+    def replace(self) -> bool: ...
+
+    @property
+    def prefix(self) -> Path | None: ...
 
     @property
     def env(self) -> list[tuple[str, str]] | None: ...
@@ -67,17 +73,18 @@ class ParametersInstall(Protocol):
     @property
     def python(self) -> str | None: ...
 
-    @property
-    def is_force_overwrite(self) -> bool: ...
 
-
-def dir_data_default() -> Path:
-    return Path(sys.prefix) / "share" / "jupyter"
+# def dir_data_default() -> Path:
+#     return Path(sys.prefix) / "share" / "jupyter"
 
 
 def parse_args(args: list[str] | None = None) -> ParametersInstall:
     parser = ArgumentParser(
-        description="Deploys the UVK kernel",
+        description=(
+            "Deploys the UVK kernel. By default, the kernel is installed in the system "
+            "space, and an error is raised if the current user does not have the right "
+            "to write in system directories. Various options can change this behavior."
+        ),
     )
     parser.add_argument(
         "--name",
@@ -94,25 +101,33 @@ def parse_args(args: list[str] | None = None) -> ParametersInstall:
     )
     parser.add_argument(
         "--user",
-        dest="dir_data",
-        action="store_const",
-        const=Path(jupyter_data_dir()),
-        help="Install the kernel in user's space.",
+        default=False,
+        action="store_true",
+        help="Install the kernel in the user's space.",
     )
     parser.add_argument(
         "--prefix",
-        dest="dir_data",
-        type=lambda d: Path(d) / "share" / "jupyter",
+        default=None,
+        type=Path,
         help="Install the kernel in the Python distribution at the given prefix path.",
     )
     parser.add_argument(
         "--sys-prefix",
-        dest="dir_data",
+        dest="prefix",
         action="store_const",
-        const=dir_data_default(),
+        const=Path(sys.prefix),
         help=(
             f"Install the kernel in the current environment; equivalent to "
-            f"--prefix={sys.prefix}. This is the default."
+            f"--prefix={sys.prefix}."
+        ),
+    )
+    parser.add_argument(
+        "--replace",
+        default=False,
+        action="store_true",
+        help=(
+            "Forces the installation of the kernel even if that would clobber an "
+            "existing kernel with the same name."
         ),
     )
     parser.add_argument(
@@ -155,20 +170,9 @@ def parse_args(args: list[str] | None = None) -> ParametersInstall:
             f"as {sys.executable}."
         ),
     )
-    parser.add_argument(
-        "-f",
-        dest="is_force_overwrite",
-        default=False,
-        action="store_true",
-        help=(
-            "If a kernel already exists where the new one is being installed, "
-            "it is clobbered. The default is to abort the installation and "
-            "avoid clobbering."
-        ),
-    )
     params = parser.parse_args(args)
-    if not params.dir_data:
-        params.dir_data = dir_data_default()
+    # if not params.dir_data:
+    #     params.dir_data = dir_data_default()
     return params
 
 
