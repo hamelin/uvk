@@ -4,6 +4,7 @@ from jupyter_client.manager import (
     start_new_kernel,
 )
 from jupyter_client.kernelspec import KernelSpecManager
+from pathlib import Path
 import pytest  # noqa
 import sys
 from uuid import uuid4
@@ -12,18 +13,21 @@ from uvk.__main__ import prepare_kernelspec
 
 
 @pytest.fixture
-def installed_kernel() -> str:
+def kernelspec() -> Iterator[str]:
+    mgr = KernelSpecManager()
     name = f"uvk-{uuid4()}"
     with prepare_kernelspec(name, "UVK unit test") as dir_kernelspec:
-        KernelSpecManager().install_kernel_spec(
-            str(dir_kernelspec), name, prefix=sys.prefix
-        )
-    return name
+        d = mgr.install_kernel_spec(str(dir_kernelspec), name, prefix=sys.prefix)
+
+    yield name
+
+    mgr.remove_kernel_spec(name)
+    assert not Path(d).is_dir()
 
 
 @pytest.fixture
-def client_kernel(installed_kernel: str) -> Iterator[BlockingKernelClient]:
-    km, kc = start_new_kernel(startup_timeout=10.0, kernel_name=installed_kernel)
+def client_kernel(kernelspec: str) -> Iterator[BlockingKernelClient]:
+    km, kc = start_new_kernel(startup_timeout=10.0, kernel_name=kernelspec)
     yield kc
     km.shutdown_kernel()
 
