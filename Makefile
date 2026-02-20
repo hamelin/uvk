@@ -6,7 +6,7 @@ all: test type pep8
 tests: test
 
 test: black
-	$(UV_RUN) pytest $(and $(failfast),-x) src
+	$(UV_RUN) pytest $(and $(failfast),-x) $(and $(pdb),--pdb) src
 
 type: black
 	$(UV_RUN) mypy --ignore-missing-imports src
