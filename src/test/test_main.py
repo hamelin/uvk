@@ -1,14 +1,17 @@
 from argparse import Namespace
-from jupyter_core.paths import jupyter_data_dir
-from pathlib import Path  # noqa
+from collections.abc import Iterator
+from jupyter_client.kernelspec import KernelSpec, KernelSpecManager
+import os
+from pathlib import Path
 import pytest  # noqa
 import sys
+from uuid import uuid4
 
 from uvk.__main__ import (
     display_name_default,
-    install_kernelspec,
-    KernelSpecAlreadyExists,
+    Env,
     ParametersInstall,
+    prepare_kernelspec,
     parse_args,
     PATH_UV,
 )
@@ -18,7 +21,6 @@ def ns(
     name: str = "uvk",
     display_name: str = display_name_default(),
     user: bool = False,
-    replace: bool = False,
     prefix: Path | None = None,
     env: list[tuple[str, str]] | None = None,
     quiet: int = 0,
@@ -28,7 +30,6 @@ def ns(
         name=name,
         display_name=display_name,
         user=user,
-        replace=replace,
         prefix=prefix,
         env=[list(t) for t in env] if env else None,
         quiet=quiet,
@@ -42,13 +43,12 @@ def ns(
         (ns(), []),
         (ns(name="uvk-test"), ["--name", "uvk-test"]),
         (ns(display_name="heyhey"), ["--display-name", "heyhey"]),
-        (ns(user=True, replace=False, prefix=None), ["--user"]),
+        (ns(user=True, prefix=None), ["--user"]),
         (
-            ns(user=False, replace=False, prefix=Path("asdf/qwer/zxcv")),
+            ns(user=False, prefix=Path("asdf/qwer/zxcv")),
             ["--prefix", "asdf/qwer/zxcv"],
         ),
-        (ns(user=False, replace=True, prefix=None), ["--replace"]),
-        (ns(user=False, replace=False, prefix=Path(sys.prefix)), ["--sys-prefix"]),
+        (ns(user=False, prefix=Path(sys.prefix)), ["--sys-prefix"]),
         (ns(env=[("heyhey", "hoho")]), ["--env", "heyhey", "hoho"]),
         (
             ns(env=[("TMPDIR", str(Path.home() / "tmp"))]),
@@ -59,7 +59,7 @@ def ns(
             ["--env", "asdf", "qwer", "--tmp", "heyhey", "--env", "zxcv", "hoho"],
         ),
         (
-            ns(display_name="nomnom", user=True, replace=False, prefix=Path("foo/bar")),
+            ns(display_name="nomnom", user=True, prefix=Path("foo/bar")),
             [
                 "--sys-prefix",
                 "--prefix",
@@ -89,73 +89,91 @@ def test_parse_args(expected: ParametersInstall, args: list[str]) -> None:
         ("Test UVK", [], sys.executable),
     ],
 )
-def test_kernelspec(
+def test_prepare_kernelspec(
     tmp_path: Path,
     display_name: str,
-    env: list[tuple[str, str]],
+    env: Env,
     python: str | None,
 ) -> None:
-    params = Namespace(
-        name="test-uvk",
-        display_name=display_name,
-        dir_data=tmp_path / "kernels",
-        env=env,
-        python=python,
-    )
-    with install_kernelspec(params) as (dir_kernelspec, kernelspec):
-        assert dir_kernelspec.relative_to(params.dir_data)
-        assert dir_kernelspec.name == params.name
-        assert list(dir_kernelspec.glob("logo*.png"))
+    with prepare_kernelspec(
+        "TEST-uvk-TEST", display_name=display_name, env=env, python=python or ""
+    ) as dir_kernel:
+        for logo in ["logo-32x32.png", "logo-64x64.png", "logo-svg.svg"]:
+            assert (dir_kernel / logo).is_file()
 
-        assert "argv" in kernelspec
-        assert len(kernelspec["argv"]) >= 4
-        assert kernelspec["argv"][0] == str(PATH_UV)
-        assert kernelspec.get("display_name", "") == params.display_name
+        assert (dir_kernel / "kernel.json").is_file()
+        kernelspec = KernelSpec.from_resource_dir(str(dir_kernel))
+        assert len(kernelspec.argv) >= 4
+        assert kernelspec.argv[0] == str(PATH_UV)
+        assert kernelspec.display_name == display_name
+        assert kernelspec.env == dict(env or {})
 
-        if params.env:
-            assert dict(params.env) == kernelspec.get("env", {})
-        else:
-            assert "env" not in kernelspec
-
-        if params.python:
+        if python:
             try:
-                i = kernelspec["argv"].index("--python")
-                assert kernelspec["argv"][i + 1] == params.python
+                i = kernelspec.argv.index("--python")
+                assert kernelspec.argv[i + 1] == python
             except ValueError:
                 pytest.fail("No --python in kernelspec arguments")
         else:
-            assert "--python" not in kernelspec["argv"]
+            assert "--python" not in kernelspec.argv
 
 
-def test_fail_on_overwriting_kernelspec(tmp_path):
-    params = Namespace(
-        name="uvktest",
-        display_name="UVK test",
-        dir_data=tmp_path,
-        env=[],
-        python=None,
-        is_force_overwrite=False,
+@pytest.fixture
+def path_tmp_jupyter(tmp_path: Path) -> Iterator[Path]:
+    jupyter_path = os.environ.get("JUPYTER_PATH", None)
+    try:
+        dir_jupyter = tmp_path / "share" / "jupyter"
+        dir_jupyter.mkdir(parents=True, exist_ok=False)
+        os.environ["JUPYTER_PATH"] = str(dir_jupyter)
+        yield dir_jupyter
+    finally:
+        del os.environ["JUPYTER_PATH"]
+        if jupyter_path:
+            os.environ["JUPYTER_PATH"] = jupyter_path
+
+
+@pytest.fixture
+def name_kernel() -> str:
+    return f"uvk-{uuid4()}"
+
+
+def test_path_tmp_jupyter(path_tmp_jupyter: Path) -> None:
+    mgr = KernelSpecManager()
+    assert str(path_tmp_jupyter / "kernels") in mgr.kernel_dirs
+
+
+def install_kernelspec(
+    name: str, prefix: str, display_name: str = "UVK unit test"
+) -> None:
+    with prepare_kernelspec(name, display_name=display_name) as dir:
+        KernelSpecManager().install_kernel_spec(str(dir), name, prefix=prefix)
+
+
+@pytest.fixture
+def prefix_install(tmp_path: Path) -> str:
+    return str(tmp_path)
+
+
+@pytest.fixture
+def installed_kernel(prefix_install: str, path_tmp_jupyter: Path) -> str:
+    name_kernel = f"uvk-{uuid4()}"
+    install_kernelspec(name_kernel, prefix_install)
+    return name_kernel
+
+
+def test_install_kernelspec(installed_kernel: str) -> None:
+    mgr = KernelSpecManager()
+    specs = mgr.get_all_specs()
+    assert installed_kernel in mgr.get_all_specs()
+    assert specs[installed_kernel]["spec"]["display_name"] == "UVK unit test"
+
+
+def test_clobber_existing_kernelspec(
+    installed_kernel: str, prefix_install: str
+) -> None:
+    assert installed_kernel in KernelSpecManager().get_all_specs()
+    install_kernelspec(installed_kernel, prefix_install, display_name="ALT")
+    assert (
+        KernelSpecManager().get_all_specs()[installed_kernel]["spec"]["display_name"]
+        == "ALT"
     )
-    with install_kernelspec(params):
-        pass
-    with pytest.raises(KernelSpecAlreadyExists):
-        with install_kernelspec(params):
-            pass
-
-
-def test_clobber_existing_kernelspec(tmp_path):
-    params = Namespace(
-        name="uvktest",
-        display_name="UVK test",
-        dir_data=tmp_path,
-        env=[],
-        python=None,
-        is_force_overwrite=False,
-    )
-    with install_kernelspec(params):
-        pass
-
-    params.display_name = "Clobber"
-    params.is_force_overwrite = True
-    with install_kernelspec(params) as (_, kernelspec):
-        assert kernelspec["display_name"] == "Clobber"

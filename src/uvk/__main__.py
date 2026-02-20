@@ -2,16 +2,20 @@ from argparse import Action, ArgumentParser, Namespace
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from jupyter_core.paths import jupyter_data_dir
-import json
+from importlib.resources import open_binary
+from jupyter_client import protocol_version
+from jupyter_client.kernelspec import KernelSpec, KernelSpecManager
 import logging as lg
 from pathlib import Path
 import shutil
 import sys
+from tempfile import TemporaryDirectory
 from typing import Protocol
 
+from . import resources
+
 LOG = lg.getLogger("uvk")
-KernelSpec = dict
+Env = Sequence[tuple[str, str]]
 
 
 try:
@@ -57,9 +61,6 @@ class ParametersInstall(Protocol):
 
     @property
     def user(self) -> bool: ...
-
-    @property
-    def replace(self) -> bool: ...
 
     @property
     def prefix(self) -> Path | None: ...
@@ -122,15 +123,6 @@ def parse_args(args: list[str] | None = None) -> ParametersInstall:
         ),
     )
     parser.add_argument(
-        "--replace",
-        default=False,
-        action="store_true",
-        help=(
-            "Forces the installation of the kernel even if that would clobber an "
-            "existing kernel with the same name."
-        ),
-    )
-    parser.add_argument(
         "--env",
         dest="env",
         action="append",
@@ -158,6 +150,13 @@ def parse_args(args: list[str] | None = None) -> ParametersInstall:
         ),
     )
     parser.add_argument(
+        "--debug",
+        dest="quiet",
+        action="store_const",
+        const=-1,
+        help="Debug-level output chatter.",
+    )
+    parser.add_argument(
         "-p",
         "--python",
         dest="python",
@@ -170,96 +169,76 @@ def parse_args(args: list[str] | None = None) -> ParametersInstall:
             f"as {sys.executable}."
         ),
     )
-    params = parser.parse_args(args)
-    # if not params.dir_data:
-    #     params.dir_data = dir_data_default()
-    return params
-
-
-class KernelSpecAlreadyExists(Exception):
-
-    def __init__(self, path_kernelspec: Path) -> None:
-        self.path_kernelspec = path_kernelspec
-        super().__init__(f"Kernelspec already exists at path {path_kernelspec}")
+    return parser.parse_args(args)
 
 
 @contextmanager
-def install_kernelspec(params: ParametersInstall) -> Iterator[tuple[Path, KernelSpec]]:
-    path_kernelspec = params.dir_data / "kernels" / params.name
-    path_kernel_json = path_kernelspec / "kernel.json"
-    if path_kernelspec.is_dir() and path_kernel_json.is_file():
-        if params.is_force_overwrite:
-            shutil.rmtree(path_kernelspec)
-        else:
-            raise KernelSpecAlreadyExists(path_kernelspec)
+def prepare_kernelspec(
+    name: str, display_name: str, env: Env = [], python: str = ""
+) -> Iterator[Path]:
+    with TemporaryDirectory() as dir_:
+        dir_kernel = Path(dir_)
+        for name_logo in ["logo-32x32.png", "logo-64x64.png", "logo-svg.svg"]:
+            with (
+                open_binary(resources, name_logo) as src,
+                (dir_kernel / name_logo).open(mode="wb") as dest,
+            ):
+                shutil.copyfileobj(src, dest)
 
-    try:
-        path_kernelspec.mkdir(parents=True, exist_ok=False)
-
-        path_resources_kernelspec = (
-            Path(sys.prefix) / "share" / "jupyter" / "kernels" / "python3"
-        )
-        assert path_resources_kernelspec.is_dir()
-        for p in path_resources_kernelspec.iterdir():
-            # TBD: use own icons
-            shutil.copy(p, path_kernelspec / p.name)
-
-        assert path_kernel_json.is_file()
-        kernelspec = json.loads(path_kernel_json.read_text(encoding="utf-8"))
-        assert "argv" in kernelspec
-        kernelspec["argv"] = [
-            str(PATH_UV),
-            "run",
-            "--with",
-            "uvk",
-            *([] if params.python is None else ["--python", params.python]),
-            "--isolated",
-            "--no-cache",
-            "python",
-            "-m",
-            "ipykernel_launcher",
-            "-f",
-            "{connection_file}",
-        ]
-        kernelspec["display_name"] = params.display_name
-        if params.env:
-            kernelspec.setdefault("env", {}).update(dict(params.env))
-
-        yield path_kernelspec, kernelspec
-
-        path_kernel_json.write_text(json.dumps(kernelspec), encoding="utf-8")
-    except Exception as err:
-        LOG.warning(
-            f"Following {type(err).__name__} {err}, incipient kernelspec at "
-            f"{path_kernelspec} is destroyed"
-        )
-        shutil.rmtree(path_kernelspec, ignore_errors=True)
-        raise
+        with (dir_kernel / "kernel.json").open(mode="w", encoding="utf-8") as file:
+            file.write(
+                KernelSpec(
+                    argv=[
+                        str(PATH_UV),
+                        "run",
+                        "--with",
+                        "uvk",
+                        *([] if not python else ["--python", python]),
+                        "--isolated",
+                        "--no-cache",
+                        "python",
+                        "-m",
+                        "ipykernel_launcher",
+                        "-f",
+                        "{connection_file}",
+                    ],
+                    name=name,
+                    display_name=display_name,
+                    env=dict(env or []),
+                    language="python",
+                    metadata={"debugger": True},
+                    kernel_protocol_version=protocol_version,
+                ).to_json()
+            )
+        yield dir_kernel
 
 
 def main():
-    lg.basicConfig(level=lg.WARNING, format="%(message)s")
+    lg.basicConfig(level=lg.INFO, format="%(message)s")
     params = parse_args()
-    LOG.setLevel(
-        defaultdict(lambda: lg.CRITICAL, {0: lg.INFO, 1: lg.WARN, 2: lg.ERROR})[
-            params.quiet
-        ]
+    lg.getLogger().setLevel(
+        defaultdict(
+            lambda: lg.CRITICAL, {-1: lg.DEBUG, 0: lg.INFO, 1: lg.WARN, 2: lg.ERROR}
+        )[params.quiet]
     )
 
     try:
-        with install_kernelspec(params) as (dir_kernelspec, _):
-            LOG.info(f"UVK kernelspec added at {dir_kernelspec}")
-    except KernelSpecAlreadyExists as err:
-        LOG.warn(
-            f"Kernelspec already exists at path {err.path_kernelspec}. "
-            "Erring on the side of caution, we refuse to clobber it. "
-            "If you mean to replace it, first remove it with "
-            "`jupyter kernelspec remove` before attempting this command again."
-        )
-        sys.exit(2)
+        mgr = KernelSpecManager()
+        with prepare_kernelspec(
+            name=params.name,
+            display_name=params.display_name,
+            env=params.env,
+            python=params.python,
+        ) as dir_ks:
+            mgr.install_kernel_spec(
+                str(dir_ks), params.name, user=params.user, prefix=params.prefix
+            )
+    except (ValueError, OSError) as err:
+        LOG.critical(str(err))
+        sys.exit(1)
     except Exception as err:
         LOG.critical(f"{type(err).__name__}: {err}; abort")
-        sys.exit(1)
+        sys.exit(2)
 
 
 if __name__ == "__main__":
