@@ -174,7 +174,11 @@ def parse_args(args: list[str] | None = None) -> ParametersInstall:
 
 @contextmanager
 def prepare_kernelspec(
-    name: str, display_name: str, env: Env = [], python: str = ""
+    name: str,
+    display_name: str,
+    env: Env = [],
+    python: str = "",
+    isolated: bool = True,
 ) -> Iterator[Path]:
     with TemporaryDirectory() as dir_:
         dir_kernel = Path(dir_)
@@ -193,9 +197,8 @@ def prepare_kernelspec(
                         "run",
                         "--with",
                         "uvk",
-                        *([] if not python else ["--python", python]),
-                        "--isolated",
-                        "--no-cache",
+                        *(["--python", python] if python else []),
+                        *(["--isolated", "--no-cache"] if isolated else []),
                         "python",
                         "-m",
                         "ipykernel_launcher",
