@@ -178,7 +178,6 @@ def prepare_kernelspec(
     display_name: str,
     env: Env = [],
     python: str = "",
-    isolated: bool = True,
 ) -> Iterator[Path]:
     with TemporaryDirectory() as dir_:
         dir_kernel = Path(dir_)
@@ -198,7 +197,7 @@ def prepare_kernelspec(
                         "--with",
                         "uvk",
                         *(["--python", python] if python else []),
-                        *(["--isolated", "--no-cache"] if isolated else []),
+                        "--isolated",
                         "python",
                         "-m",
                         "ipykernel_launcher",

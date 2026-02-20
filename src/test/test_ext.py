@@ -16,7 +16,7 @@ from uvk.__main__ import prepare_kernelspec
 def kernelspec() -> Iterator[str]:
     mgr = KernelSpecManager()
     name = f"uvk-{uuid4()}"
-    with prepare_kernelspec(name, "UVK unit test", isolated=False) as dir_kernelspec:
+    with prepare_kernelspec(name, "UVK unit test") as dir_kernelspec:
         d = mgr.install_kernel_spec(str(dir_kernelspec), name, prefix=sys.prefix)
 
     yield name
