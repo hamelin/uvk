@@ -6,9 +6,13 @@ specific functionalities are delivered.
 """
 
 from IPython.core.interactiveshell import InteractiveShell
+import logging as lg
+from packaging.specifiers import SpecifierSet
 import shutil
+import sys
 
 _PATH_UV = shutil.which("uv")
+LOG = lg.getLogger(__name__)
 
 
 class CannotFindUV(Exception):
@@ -42,8 +46,24 @@ def script_metadata(cell: str) -> None:
     print("TBD")
 
 
-def python_version(line: str) -> None:
-    print("TBD")
+class PythonVersionNotSatisfied(Exception):
+
+    def __init__(self, constraint: str, version: str) -> None:
+        super().__init__(
+            (
+                f"Python version constraint {constraint} not satisfied: "
+                f"current interpreter is version {version}"
+            )
+        )
+        self.constraint = constraint
+        self.version = version
+
+
+def python_version(line: str = "") -> None:
+    version, *_ = sys.version.split()
+    if version not in SpecifierSet(str(line)):
+        raise PythonVersionNotSatisfied(str(line), version)
+    LOG.info(f"Current Python version {version} satisfies constraint {line}")
 
 
 def dependencies(line: str) -> None:
