@@ -45,10 +45,29 @@ def execute(
 
     client.execute_interactive(code, timeout=timeout, output_hook=store_output)
     return {
-        stream: "\n".join(chunks).strip().split("\n")
+        stream: "\n".join([chunk.strip() for chunk in chunks]).strip().split("\n")
         for stream, chunks in outputs.items()
     }
 
 
 def test_client_hello(client_kernel: BlockingKernelClient) -> None:
     assert execute(client_kernel, "print('hello world')") == {"stdout": ["hello world"]}
+
+
+def test_load_ext(client_kernel: BlockingKernelClient) -> None:
+    def magics(kind: str) -> set[str]:
+        return set(
+            execute(
+                client_kernel,
+                f"""
+                for m in get_ipython().magics_manager.magics["{kind}"].keys():
+                    print(m)
+                """,
+            )["stdout"]
+        )
+
+    assert not ({"python_version", "dependencies"} <= magics("line"))
+    assert not ({"script_metadata", "dependencies"} <= magics("cell"))
+    client_kernel.execute_interactive("%load_ext uvk")
+    assert {"python_version", "dependencies"} <= magics("line")
+    assert {"script_metadata", "dependencies"} <= magics("cell")

@@ -5,8 +5,10 @@ by the IPython process, as shelling out to uv is how most of the kernel's
 specific functionalities are delivered.
 """
 
-from IPython.core.magic import cell_magic, line_magic, line_cell_magic
-import subprocess as sp
+from IPython.core.interactiveshell import InteractiveShell
+import shutil
+
+_PATH_UV = shutil.which("uv")
 
 
 class CannotFindUV(Exception):
@@ -23,23 +25,26 @@ class CannotFindUV(Exception):
         )
 
 
-def load_ipython_extension(ipython) -> None:
-    try:
-        sp.run(["uv"], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-    except OSError:
+def load_ipython_extension(shell: InteractiveShell) -> None:
+    if not _PATH_UV:
         raise CannotFindUV()
+    for magic, kind in [
+        (python_version, "line"),
+        (script_metadata, "cell"),
+        (dependencies, "line_cell"),
+    ]:
+        shell.register_magic_function(  # type: ignore
+            func=magic, magic_kind=kind, magic_name=magic.__name__
+        )
 
 
-@cell_magic
 def script_metadata(cell: str) -> None:
     print("TBD")
 
 
-@line_magic
 def python_version(line: str) -> None:
     print("TBD")
 
 
-@line_cell_magic
 def dependencies(line: str) -> None:
     print("TBD")
