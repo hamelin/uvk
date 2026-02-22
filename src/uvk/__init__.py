@@ -6,10 +6,17 @@ specific functionalities are delivered.
 """
 
 from IPython.core.interactiveshell import InteractiveShell
+from IPython.display import display, Markdown
 import logging as lg
+from packaging.requirements import Requirement
 from packaging.specifiers import SpecifierSet
 import shutil
+import subprocess as sp
 import sys
+from tempfile import NamedTemporaryFile
+from typing import cast
+
+from ._parse import parse_dependencies
 
 _PATH_UV = shutil.which("uv")
 LOG = lg.getLogger(__name__)
@@ -66,5 +73,41 @@ def python_version(line: str = "") -> None:
     LOG.info(f"Current Python version {version} satisfies constraint {line}")
 
 
-def dependencies(line: str) -> None:
-    print("TBD")
+def dependencies(line: str, cell: str = "") -> None:
+    dependencies_raw = (
+        f"{line.strip()}\n{cell}" if line and cell else line or cell
+    ).strip()
+    dependencies_normalized = list(parse_dependencies(dependencies_raw))
+    if cell:
+        if line or dependencies_normalized != [
+            line.strip() for line in dependencies_raw.split("\n")
+        ]:
+            LOG.debug("Dependencies are irregular")
+            display(
+                Markdown(
+                    "\n".join(
+                        [
+                            (
+                                "Requirement specifications are irregular. "
+                                "They will be processed as if they had been supplied "
+                                "in the following form:"
+                            ),
+                            "",
+                            "```",
+                            "%%dependencies",
+                            *dependencies_normalized,
+                            "```",
+                        ]
+                    )
+                )
+            )
+
+    with NamedTemporaryFile("wt", encoding="utf-8") as file:
+        for dep in dependencies_normalized:
+            Requirement(dep)  # Will raise an exception on invalid requirements.
+            print(dep, file=file)
+        file.flush()
+
+        cmd = [cast(str, _PATH_UV), "pip", "install", "--requirements", file.name]
+        LOG.debug("Run " + " ".join(cmd))
+        sp.run(cmd).check_returncode()

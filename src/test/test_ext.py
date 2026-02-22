@@ -7,6 +7,7 @@ from jupyter_client.kernelspec import KernelSpecManager
 from pathlib import Path
 import pytest  # noqa
 import sys
+from textwrap import dedent
 from uuid import uuid4
 
 from uvk.__main__ import prepare_kernelspec
@@ -38,11 +39,13 @@ def execute(
     outputs: dict[str, list[str]] = {}
 
     def store_output(msg):
-        print(msg)
         if msg["msg_type"] == "stream":
             outputs.setdefault(msg["content"].get("name", "unknown"), []).append(
                 msg["content"].get("text", "")
             )
+        elif msg["msg_type"] == "display_data":
+            for mime_type, content in msg.get("content", {}).get("data", {}).items():
+                outputs.setdefault(mime_type, []).append(content)
 
     r = client.execute_interactive(code, timeout=timeout, output_hook=store_output)
     return r, {
@@ -118,3 +121,84 @@ def test_python_version_bad_specifier(client_uvk: BlockingKernelClient) -> None:
     assert r.get("content", {}).get("status", "") == "error"
     assert r.get("content", {}).get("ename", "") == "InvalidSpecifier"
     assert not outputs
+
+
+def import_externals(client: BlockingKernelClient) -> bool:
+    r, outputs = execute(
+        client,
+        """
+        import numpy as np
+        import joblib as jl
+        print(5)
+        """,
+    )
+    return (
+        r.get("content", {}).get("status", "") == "ok" and outputs["stdout"][-1] == "5"
+    )
+
+
+@pytest.mark.parametrize(
+    "dependencies_invocation",
+    [
+        """\
+        %dependencies numpy scipy>1.11 scikit-learn==1.8.0
+        """,
+        """\
+        %%dependencies
+        numpy
+        scikit-learn==1.8.0
+        scipy>1.11
+        """,
+    ],
+)
+def test_dependencies(
+    client_uvk: BlockingKernelClient, dependencies_invocation: str
+) -> None:
+    assert not import_externals(client_uvk)
+    _, outputs = execute(
+        client_uvk,
+        dedent(dependencies_invocation.rstrip()),
+    )
+    assert "text/markdown" not in outputs
+    assert import_externals(client_uvk)
+
+
+@pytest.mark.parametrize(
+    "dependencies_invocation",
+    [
+        """
+        %%dependencies numpy pandas
+        scipy>1.11
+        scikit-learn==1.8.0
+        """,
+        """
+        %%dependencies
+        numpy    \tpandas
+        \t\tscipy>1.11
+            scikit-learn==1.8.0
+        """,
+    ],
+)
+def test_dependencies_normalized(
+    client_uvk: BlockingKernelClient, dependencies_invocation: str
+) -> None:
+    assert not import_externals(client_uvk)
+    _, outputs = execute(
+        client_uvk,
+        dedent(dependencies_invocation.rstrip()),
+    )
+    assert [
+        (
+            "Requirement specifications are irregular. They will be processed as "
+            "if they had been supplied in the following form:"
+        ),
+        "",
+        "```",
+        "%%dependencies",
+        "numpy",
+        "pandas",
+        "scipy>1.11",
+        "scikit-learn==1.8.0",
+        "```",
+    ] == outputs.get("text/markdown", [])
+    assert import_externals(client_uvk)
