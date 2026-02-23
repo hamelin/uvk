@@ -12,6 +12,8 @@ from uuid import uuid4
 
 from uvk.__main__ import prepare_kernelspec
 
+from . import cook
+
 
 @pytest.fixture
 def kernelspec() -> Iterator[str]:
@@ -121,6 +123,40 @@ def test_require_python_bad_specifier(client_uvk: BlockingKernelClient) -> None:
     assert r.get("content", {}).get("status", "") == "error"
     assert r.get("content", {}).get("ename", "") == "InvalidSpecifier"
     assert not outputs
+
+
+def imports2cell(*imports: str) -> str:
+    return "\n".join([*[f"import {imp}" for imp in imports], "print(5)"])
+
+
+@pytest.mark.parametrize(
+    "imports,expected_raw",
+    [
+        (
+            (),
+            """\
+            print(5)
+            """,
+        ),
+        (
+            ("pytest",),
+            """\
+            import pytest
+            print(5)
+            """,
+        ),
+        (
+            ("numpy as np", "joblib as jl"),
+            """\
+            import numpy as np
+            import joblib as jl
+            print(5)
+            """,
+        ),
+    ],
+)
+def test_imports2cell(imports: tuple[str, ...], expected_raw: str):
+    assert cook(expected_raw) == imports2cell(*imports)
 
 
 def import_externals(client: BlockingKernelClient) -> bool:
