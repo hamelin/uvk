@@ -53,24 +53,28 @@ def script_metadata(cell: str) -> None:
     raise NotImplementedError()
 
 
-class PythonVersionNotSatisfied(Exception):
+class PythonRequirementNotSatisfied(Exception):
 
-    def __init__(self, constraint: str, version: str) -> None:
+    def __init__(self, spec: str, version: str) -> None:
         super().__init__(
             (
-                f"Python version constraint {constraint} not satisfied: "
+                f"Python version specification {spec} not satisfied: "
                 f"current interpreter is version {version}"
             )
         )
-        self.constraint = constraint
+        self.spec = spec
         self.version = version
 
 
-def python_version(line: str = "") -> None:
+def _require_python(spec: str) -> None:
     version, *_ = sys.version.split()
-    if version not in SpecifierSet(str(line)):
-        raise PythonVersionNotSatisfied(str(line), version)
-    LOG.info(f"Current Python version {version} satisfies constraint {line}")
+    if version not in SpecifierSet(spec):
+        raise PythonRequirementNotSatisfied(spec, version)
+    LOG.info(f"Current Python version {version} satisfies specification {spec}")
+
+
+def python_version(line: str = "") -> None:
+    _require_python(str(line))
 
 
 def dependencies(line: str, cell: str = "") -> None:

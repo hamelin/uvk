@@ -106,7 +106,7 @@ def test_python_version_not_satisfied(client_uvk: BlockingKernelClient) -> None:
         """,
     )
     assert r.get("content", {}).get("status", "") == "error"
-    assert r.get("content", {}).get("ename", "") == "PythonVersionNotSatisfied"
+    assert r.get("content", {}).get("ename", "") == "PythonRequirementNotSatisfied"
     assert not outputs
 
 
