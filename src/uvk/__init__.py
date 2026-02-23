@@ -50,7 +50,7 @@ def load_ipython_extension(shell: InteractiveShell) -> None:
 
 
 def script_metadata(cell: str) -> None:
-    print("TBD")
+    raise NotImplementedError()
 
 
 class PythonVersionNotSatisfied(Exception):
