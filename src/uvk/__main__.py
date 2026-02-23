@@ -165,7 +165,7 @@ def parse_args(args: list[str] | None = None) -> ParametersInstall:
             "Set the Python interpreter to use as kernel engine. "
             "Convention for this parameter mirrors uv's --python option. "
             "This can be just a Python version number, such as `3.12` or "
-            "`3.13.3`, or the full path to an Python executable, such "
+            "`3.13.3`, or the full path to a Python executable, such "
             f"as {sys.executable}."
         ),
     )
