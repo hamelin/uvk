@@ -5,6 +5,7 @@ by the IPython process, as shelling out to uv is how most of the kernel's
 specific functionalities are delivered.
 """
 
+from collections.abc import Iterable
 from IPython.core.interactiveshell import InteractiveShell
 from IPython.display import display, Markdown
 import logging as lg
@@ -106,8 +107,12 @@ def dependencies(line: str, cell: str = "") -> None:
                 )
             )
 
+    _install_requirements(dependencies_normalized)
+
+
+def _install_requirements(requirements: Iterable[str]) -> None:
     with NamedTemporaryFile("wt", encoding="utf-8") as file:
-        for dep in dependencies_normalized:
+        for dep in requirements:
             Requirement(dep)  # Will raise an exception on invalid requirements.
             print(dep, file=file)
         file.flush()
