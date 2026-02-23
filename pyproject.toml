@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "uvk"
-version = "0.0.1"
+version = "0.1"
 authors = [{name = "Benoit Hamelin", email = "benoit.hamelin@gmail.com"}]
 maintainers = [{name = "Benoit Hamelin", email = "benoit.hamelin@gmail.com"}]
 description = "Fully isolated IPython kernels based on uv"
