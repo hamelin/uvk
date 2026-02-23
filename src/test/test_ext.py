@@ -70,10 +70,10 @@ def test_load_ext(client_kernel: BlockingKernelClient) -> None:
         )
         return set(outputs["stdout"])
 
-    assert not ({"python_version", "dependencies"} <= magics("line"))
+    assert not ({"require_python", "dependencies"} <= magics("line"))
     assert not ({"script_metadata", "dependencies"} <= magics("cell"))
     client_kernel.execute_interactive("%load_ext uvk")
-    assert {"python_version", "dependencies"} <= magics("line")
+    assert {"require_python", "dependencies"} <= magics("line")
     assert {"script_metadata", "dependencies"} <= magics("cell")
 
 
@@ -83,12 +83,12 @@ def client_uvk(client_kernel: BlockingKernelClient) -> BlockingKernelClient:
     return client_kernel
 
 
-def test_python_version_satisfied(client_uvk: BlockingKernelClient) -> None:
+def test_require_python_satisfied(client_uvk: BlockingKernelClient) -> None:
     major, minor, *_ = sys.version_info
     r, outputs = execute(
         client_uvk,
         f"""
-        %python_version >={major}.{minor}
+        %require_python >={major}.{minor}
         print(5)
         """,
     )
@@ -96,12 +96,12 @@ def test_python_version_satisfied(client_uvk: BlockingKernelClient) -> None:
     assert outputs["stdout"] == ["5"]
 
 
-def test_python_version_not_satisfied(client_uvk: BlockingKernelClient) -> None:
+def test_require_python_not_satisfied(client_uvk: BlockingKernelClient) -> None:
     major, minor, micro, *_ = sys.version_info
     r, outputs = execute(
         client_uvk,
         f"""
-        %python_version <{major}.{minor}.{micro}
+        %require_python <{major}.{minor}.{micro}
         print(5)
         """,
     )
@@ -110,11 +110,11 @@ def test_python_version_not_satisfied(client_uvk: BlockingKernelClient) -> None:
     assert not outputs
 
 
-def test_python_version_bad_specifier(client_uvk: BlockingKernelClient) -> None:
+def test_require_python_bad_specifier(client_uvk: BlockingKernelClient) -> None:
     r, outputs = execute(
         client_uvk,
         """
-        %python_version asdf
+        %require_python asdf
         print(5)
         """,
     )

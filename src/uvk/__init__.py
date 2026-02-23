@@ -40,7 +40,7 @@ def load_ipython_extension(shell: InteractiveShell) -> None:
     if not _PATH_UV:
         raise CannotFindUV()
     for magic, kind in [
-        (python_version, "line"),
+        (require_python, "line"),
         (script_metadata, "cell"),
         (dependencies, "line_cell"),
     ]:
@@ -73,7 +73,7 @@ def _require_python(spec: str) -> None:
     LOG.info(f"Current Python version {version} satisfies specification {spec}")
 
 
-def python_version(line: str = "") -> None:
+def require_python(line: str = "") -> None:
     _require_python(str(line))
 
 
