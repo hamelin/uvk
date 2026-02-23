@@ -7,7 +7,6 @@ from jupyter_client.kernelspec import KernelSpecManager
 from pathlib import Path
 import pytest  # noqa
 import sys
-from textwrap import dedent
 from uuid import uuid4
 
 from uvk.__main__ import prepare_kernelspec
@@ -35,10 +34,14 @@ def client_kernel(kernelspec: str) -> Iterator[BlockingKernelClient]:
     km.shutdown_kernel()
 
 
+ResultExec = dict
+Outputs = dict[str, list[str]]
+
+
 def execute(
     client: BlockingKernelClient, code: str, timeout: float = 10.0
-) -> tuple[dict, dict[str, list[str]]]:
-    outputs: dict[str, list[str]] = {}
+) -> tuple[ResultExec, Outputs]:
+    outputs: Outputs = {}
 
     def store_output(msg):
         if msg["msg_type"] == "stream":
@@ -159,18 +162,20 @@ def test_imports2cell(imports: tuple[str, ...], expected_raw: str):
     assert cook(expected_raw) == imports2cell(*imports)
 
 
-def import_externals(client: BlockingKernelClient) -> bool:
-    r, outputs = execute(
-        client,
-        """
-        import numpy as np
-        import joblib as jl
-        print(5)
-        """,
-    )
-    return (
-        r.get("content", {}).get("status", "") == "ok" and outputs["stdout"][-1] == "5"
-    )
+def import_np_jl(client: BlockingKernelClient) -> tuple[ResultExec, Outputs]:
+    return execute(client, imports2cell("numpy as np", "joblib as jl"))
+
+
+def check_import_np_jl_fails(client: BlockingKernelClient) -> None:
+    r, outputs = import_np_jl(client)
+    assert r.get("content", {}).get("status", "") == "error"
+    assert r.get("content", {}).get("ename", "") == "ModuleNotFoundError"
+
+
+def check_import_np_jl_succeeds(client: BlockingKernelClient) -> None:
+    r, outputs = import_np_jl(client)
+    assert r.get("content", {}).get("status", "") == "ok"
+    assert outputs.get("stdout") == ["5"]
 
 
 @pytest.mark.parametrize(
@@ -190,13 +195,13 @@ def import_externals(client: BlockingKernelClient) -> bool:
 def test_dependencies(
     client_uvk: BlockingKernelClient, dependencies_invocation: str
 ) -> None:
-    assert not import_externals(client_uvk)
+    check_import_np_jl_fails(client_uvk)
     _, outputs = execute(
         client_uvk,
-        dedent(dependencies_invocation.rstrip()),
+        cook(dependencies_invocation),
     )
     assert "text/markdown" not in outputs
-    assert import_externals(client_uvk)
+    check_import_np_jl_succeeds(client_uvk)
 
 
 @pytest.mark.parametrize(
@@ -218,10 +223,10 @@ def test_dependencies(
 def test_dependencies_normalized(
     client_uvk: BlockingKernelClient, dependencies_invocation: str
 ) -> None:
-    assert not import_externals(client_uvk)
+    check_import_np_jl_fails(client_uvk)
     _, outputs = execute(
         client_uvk,
-        dedent(dependencies_invocation.rstrip()),
+        cook(dependencies_invocation),
     )
     assert [
         (
@@ -237,4 +242,53 @@ def test_dependencies_normalized(
         "scikit-learn==1.8.0",
         "```",
     ] == outputs.get("text/markdown", [])
-    assert import_externals(client_uvk)
+    check_import_np_jl_succeeds(client_uvk)
+
+
+def test_script_metadata_python_unsatisfied(client_uvk: BlockingKernelClient) -> None:
+    r, _ = execute(
+        client_uvk,
+        cook("""\
+            %%script_metadata
+            # /// script
+            # require-python = "==3.8.4"
+            # ///
+            """),
+    )
+    content = r.get("content", {})
+    assert content.get("status", "") == "error"
+    assert content.get("ename", "") == "PythonRequirementNotSatisfied"
+
+
+@pytest.mark.parametrize("extraneous", [[], ["", "  ", "extraneous"]])
+def test_script_metadata_add_dependencies(
+    client_uvk: BlockingKernelClient, extraneous: list[str]
+) -> None:
+    check_import_np_jl_fails(client_uvk)
+    r, outputs = execute(
+        client_uvk,
+        cook(
+            "\n".join(
+                [
+                    cook(
+                        """\
+                        %%script_metadata
+                        # /// script
+                        # require-python = ">=3.10"
+                        # dependencies = [
+                        #     "numpy",
+                        #     "scipy>1.11",
+                        #     "scikit-learn==1.8.0",
+                        # ]
+                        # ///
+                        """.rstrip(),
+                    ),
+                    *[f"# {line}" for line in extraneous],
+                ]
+            ),
+        ),
+    )
+    assert r.get("content", {}).get("status", "") == "ok"
+    if extraneous:
+        assert any("trailing lines" in line for line in outputs.get("stderr", []))
+    check_import_np_jl_succeeds(client_uvk)

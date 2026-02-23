@@ -16,8 +16,9 @@ import subprocess as sp
 import sys
 from tempfile import NamedTemporaryFile
 from typing import cast
+from warnings import warn
 
-from ._parse import parse_dependencies
+from ._parse import parse_dependencies, parse_script_metadata
 
 _PATH_UV = shutil.which("uv")
 LOG = lg.getLogger(__name__)
@@ -50,8 +51,17 @@ def load_ipython_extension(shell: InteractiveShell) -> None:
         )
 
 
-def script_metadata(cell: str) -> None:
-    raise NotImplementedError()
+def script_metadata(line: str, cell: str) -> None:
+    if line:
+        warn(
+            "Non-empty line argument (on the right of %%script_metadata) is ignored",
+            category=RuntimeWarning,
+        )
+    sm = parse_script_metadata(str(cell))
+    if "require-python" in sm:
+        _require_python(sm["require-python"])
+    if "dependencies" in sm:
+        _install_requirements(sm["dependencies"])
 
 
 class PythonRequirementNotSatisfied(Exception):
