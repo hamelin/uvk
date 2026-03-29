@@ -4,6 +4,7 @@ import re
 import tomllib
 import warnings as w
 
+
 Requirements = Sequence[str]
 LOG = lg.getLogger(__name__.split(".")[0])
 

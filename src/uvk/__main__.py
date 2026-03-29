@@ -39,14 +39,14 @@ class DefineTMPDIR(Action):
     def __call__(
         self,
         parser: ArgumentParser,
-        ns: Namespace,
+        namespace: Namespace,
         values: str | Sequence | None,
         option_string: str | None = None,
     ) -> None:
         assert isinstance(values, str)
-        if not ns.env:
-            ns.env = []
-        ns.env.append(["TMPDIR", values])
+        if not namespace.env:
+            namespace.env = []
+        namespace.env.append(["TMPDIR", values])
 
 
 class ParametersInstall(Protocol):
@@ -222,11 +222,14 @@ def main():
         with prepare_kernelspec(
             name=params.name,
             display_name=params.display_name,
-            env=params.env,
-            python=params.python,
+            env=params.env or [],
+            python=params.python or "",
         ) as dir_ks:
             mgr.install_kernel_spec(
-                str(dir_ks), params.name, user=params.user, prefix=params.prefix
+                str(dir_ks),
+                params.name,
+                user=params.user,
+                prefix=str(params.prefix) if params.prefix else None,
             )
     except (ValueError, OSError) as err:
         LOG.critical(str(err))

@@ -8,7 +8,6 @@ from uvk._parse import (
     NoScriptMetadataStartLine,
     parse_dependencies,
     parse_script_metadata,
-    TrailingLines,
 )
 
 from . import cook
@@ -239,7 +238,7 @@ def test_parse_script_metadata_break_convention(
 
 
 def test_parse_script_metadata_warn_trailing_lines():
-    with catch_warnings(record=True, category=TrailingLines) as ws:
+    with catch_warnings(record=True) as ws:
         parse_script_metadata(
             cook(
                 """\
