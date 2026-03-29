@@ -127,9 +127,7 @@ def test_parse_dependencies(line: str, expected: list[str]) -> None:
                     "uv": {
                         "sources": {
                             "datamapplot": {
-                                "git": (
-                                    "https://github.com/TutteInstitute/datamapplot.git"
-                                ),
+                                "git": ("https://github.com/TutteInstitute/datamapplot.git"),
                             },
                         },
                     },

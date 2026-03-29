@@ -22,17 +22,15 @@ try:
     PATH_UV = Path(shutil.which("uv"))  # type: ignore
 except TypeError:
     raise OSError(
-        "Cannot find the uv executable in the current environment; "
-        "consider reinstalling uvk."
+        "Cannot find the uv executable in the current environment; consider reinstalling uvk."
     )
 
 
 def display_name_default() -> str:
-    return f"UVK (Python " f"{sys.version_info.major}.{sys.version_info.minor})"
+    return f"UVK (Python {sys.version_info.major}.{sys.version_info.minor})"
 
 
 class DefineTMPDIR(Action):
-
     def __init__(self, option_strings, dest, nargs=None, **kwargs) -> None:
         if nargs is not None:
             raise ValueError("nargs not allowed")
@@ -52,7 +50,6 @@ class DefineTMPDIR(Action):
 
 
 class ParametersInstall(Protocol):
-
     @property
     def name(self) -> str: ...
 
@@ -118,8 +115,7 @@ def parse_args(args: list[str] | None = None) -> ParametersInstall:
         action="store_const",
         const=Path(sys.prefix),
         help=(
-            f"Install the kernel in the current environment; equivalent to "
-            f"--prefix={sys.prefix}."
+            f"Install the kernel in the current environment; equivalent to --prefix={sys.prefix}."
         ),
     )
     parser.add_argument(
@@ -134,10 +130,7 @@ def parse_args(args: list[str] | None = None) -> ParametersInstall:
         "--tmp",
         dest="env",
         action=DefineTMPDIR,
-        help=(
-            "Set the temporary directory where the kernel's environment will be "
-            "instantiated."
-        ),
+        help=("Set the temporary directory where the kernel's environment will be instantiated."),
     )
     parser.add_argument(
         "-q",
@@ -219,9 +212,9 @@ def main():
     lg.basicConfig(level=lg.INFO, format="%(message)s")
     params = parse_args()
     lg.getLogger().setLevel(
-        defaultdict(
-            lambda: lg.CRITICAL, {-1: lg.DEBUG, 0: lg.INFO, 1: lg.WARN, 2: lg.ERROR}
-        )[params.quiet]
+        defaultdict(lambda: lg.CRITICAL, {-1: lg.DEBUG, 0: lg.INFO, 1: lg.WARN, 2: lg.ERROR})[
+            params.quiet
+        ]
     )
 
     try:

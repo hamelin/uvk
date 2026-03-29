@@ -25,7 +25,6 @@ LOG = lg.getLogger(__name__)
 
 
 class CannotFindUV(Exception):
-
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(
             (
@@ -65,7 +64,6 @@ def script_metadata(line: str, cell: str) -> None:
 
 
 class PythonRequirementNotSatisfied(Exception):
-
     def __init__(self, spec: str, version: str) -> None:
         super().__init__(
             (
@@ -89,9 +87,7 @@ def require_python(line: str = "") -> None:
 
 
 def dependencies(line: str, cell: str = "") -> None:
-    dependencies_raw = (
-        f"{line.strip()}\n{cell}" if line and cell else line or cell
-    ).strip()
+    dependencies_raw = (f"{line.strip()}\n{cell}" if line and cell else line or cell).strip()
     dependencies_normalized = list(parse_dependencies(dependencies_raw))
     if cell:
         if line or dependencies_normalized != [

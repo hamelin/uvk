@@ -192,9 +192,7 @@ def check_import_np_jl_succeeds(client: BlockingKernelClient) -> None:
         """,
     ],
 )
-def test_dependencies(
-    client_uvk: BlockingKernelClient, dependencies_invocation: str
-) -> None:
+def test_dependencies(client_uvk: BlockingKernelClient, dependencies_invocation: str) -> None:
     check_import_np_jl_fails(client_uvk)
     _, outputs = execute(
         client_uvk,

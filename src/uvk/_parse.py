@@ -13,14 +13,12 @@ def parse_dependencies(deps: str) -> Requirements:
 
 
 class ScriptMetadataParseError(ValueError):
-
     def __init__(self, msg: str, metadata: str) -> None:
         super().__init__(msg)
         self.metadata = metadata
 
 
 class NoScriptMetadataStartLine(ScriptMetadataParseError):
-
     def __init__(self, metadata: str) -> None:
         super().__init__(
             "Cannot find the script metadata opening line `# /// script`",
@@ -29,7 +27,6 @@ class NoScriptMetadataStartLine(ScriptMetadataParseError):
 
 
 class NoScriptMetadataEndLine(ScriptMetadataParseError):
-
     def __init__(self, metadata: str) -> None:
         super().__init__(
             "Cannot find the script metadata closing line `# ///`",
@@ -38,7 +35,6 @@ class NoScriptMetadataEndLine(ScriptMetadataParseError):
 
 
 class IllegalLine(ScriptMetadataParseError):
-
     def __init__(self, metadata: str) -> None:
         super().__init__(
             (

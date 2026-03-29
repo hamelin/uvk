@@ -142,9 +142,7 @@ def test_path_tmp_jupyter(path_tmp_jupyter: Path) -> None:
     assert str(path_tmp_jupyter / "kernels") in mgr.kernel_dirs
 
 
-def install_kernelspec(
-    name: str, prefix: str, display_name: str = "UVK unit test"
-) -> None:
+def install_kernelspec(name: str, prefix: str, display_name: str = "UVK unit test") -> None:
     with prepare_kernelspec(name, display_name=display_name) as dir:
         KernelSpecManager().install_kernel_spec(str(dir), name, prefix=prefix)
 
@@ -168,12 +166,7 @@ def test_install_kernelspec(installed_kernel: str) -> None:
     assert specs[installed_kernel]["spec"]["display_name"] == "UVK unit test"
 
 
-def test_clobber_existing_kernelspec(
-    installed_kernel: str, prefix_install: str
-) -> None:
+def test_clobber_existing_kernelspec(installed_kernel: str, prefix_install: str) -> None:
     assert installed_kernel in KernelSpecManager().get_all_specs()
     install_kernelspec(installed_kernel, prefix_install, display_name="ALT")
-    assert (
-        KernelSpecManager().get_all_specs()[installed_kernel]["spec"]["display_name"]
-        == "ALT"
-    )
+    assert KernelSpecManager().get_all_specs()[installed_kernel]["spec"]["display_name"] == "ALT"
