@@ -5,17 +5,17 @@ all: test type pep8
 
 tests: test
 
-test: black
+test: format
 	$(UV_RUN) pytest $(and $(dbg),--last-failed --trace) $(and $(failfast),-x) $(and $(pdb),--pdb) $(and $(only),-k "$(only)") src
 
-type: black
-	$(UV_RUN) mypy --ignore-missing-imports src
+type: format
+	$(UV_RUN) ty check src
 
-pep8: black
-	$(UV_RUN) flake8 src
+pep8: format
+	$(UV_RUN) ruff check src
 
-black:
-	$(UV_RUN) black src
+format:
+	$(UV_RUN) ruff format src
 
 jupyterlab:
 	uv run uvk --name uvk-test --display-name "UVK TEST" --sys-prefix $(UVK_ARGS)

@@ -38,13 +38,17 @@ zip-safe = true
 include-package-data = true
 packages = ["uvk"]
 
+[tool.ruff]
+line-length = 99
+
+[tool.ruff.lint]
+ignore = ["E501"]
+
 [dependency-groups]
 dev = [
-    "black>=26.1.0",
-    "flake8>=7.3.0",
-    "mypy>=1.19.1",
-    "mypy-extensions>=1.1.0",
     "pytest>=9.0.2",
+    "ruff>=0.15.8",
+    "ty>=0.0.26",
 ]
 proto = [
     "jupyterlab>=4.5.4",
