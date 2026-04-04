@@ -2,7 +2,7 @@ from argparse import Action, ArgumentParser, Namespace
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from importlib.resources import open_binary
+from importlib.resources import files
 from jupyter_client import protocol_version
 from jupyter_client.kernelspec import KernelSpec, KernelSpecManager
 import logging as lg
@@ -176,7 +176,7 @@ def prepare_kernelspec(
         dir_kernel = Path(dir_)
         for name_logo in ["logo-32x32.png", "logo-64x64.png", "logo-svg.svg"]:
             with (
-                open_binary(resources, name_logo) as src,
+                (files(resources) / name_logo).open(mode="rb") as src,
                 (dir_kernel / name_logo).open(mode="wb") as dest,
             ):
                 shutil.copyfileobj(src, dest)
