@@ -1,6 +1,8 @@
 from collections.abc import Iterator
+from dataclasses import dataclass
 from jupyter_client.manager import (
     BlockingKernelClient,
+    KernelManager,
     start_new_kernel,
 )
 from jupyter_client.kernelspec import KernelSpecManager
@@ -14,8 +16,11 @@ from uvk.__main__ import prepare_kernelspec
 from . import cook
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def kernelspec() -> Iterator[str]:
+    """
+    This is session-scoped since it is only used by a session-scoped kernel instantiation.
+    """
     mgr = KernelSpecManager()
     name = f"uvk-{uuid4()}"
     with prepare_kernelspec(name, "UVK unit test") as dir_kernelspec:
@@ -27,11 +32,39 @@ def kernelspec() -> Iterator[str]:
     assert not Path(d).is_dir()
 
 
-@pytest.fixture
-def client_kernel(kernelspec: str) -> Iterator[BlockingKernelClient]:
-    km, kc = start_new_kernel(startup_timeout=10.0, kernel_name=kernelspec)
-    yield kc
+@dataclass
+class KernelManagerAndClient:
+    manager: KernelManager
+    client: BlockingKernelClient
+
+
+@pytest.fixture(scope="session")
+def kernel(kernelspec: str) -> Iterator[KernelManagerAndClient]:
+    """\
+    Sets up the kernel manager and client that gets reused for UVK kernel tests. A previous simpler
+    implementation had this fixture regularly-scoped, creating a whole new kernel for every test.
+    However, Jupyter kernel managers truly expect to run only once in their process' life cycle,
+    deferring the clean-up of various resources to a `atexit` handler. That implementation would
+    thus "leak" file handles (wrapped in IP sockets), causing a **Too many open files** (errno 24)
+    after enough tests involving the fixture.
+
+    The current implementation, instead, keeps the same kernel manager for all unit tests,
+    but explicitly restarts the kernel at the start of every unit test that requires the kernel
+    client. Kernel restarting is a common operation for kernel managers that does not leak open
+    files.
+
+    This restarting approach explains why the first unit test requiring the kernel client fixture
+    takes so long to run: it starts a kernel process _twice_.
+    """
+    km, kc = start_new_kernel(kernel_name=kernelspec)
+    yield KernelManagerAndClient(manager=km, client=kc)
     km.shutdown_kernel()
+
+
+@pytest.fixture
+def client_kernel(kernel: KernelManagerAndClient) -> Iterator[BlockingKernelClient]:
+    kernel.manager.restart_kernel()
+    return kernel.client
 
 
 ResultExec = dict
@@ -52,9 +85,9 @@ def execute(
             for mime_type, content in msg.get("content", {}).get("data", {}).items():
                 outputs.setdefault(mime_type, []).append(content)
 
-    r = client.execute_interactive(code, timeout=timeout, output_hook=store_output)
+    r = client.execute_interactive(code, output_hook=store_output)
     return r, {
-        stream: "\n".join([chunk.strip() for chunk in chunks]).strip().split("\n")
+        stream: "\n".join([chunk.strip() for chunk in chunks]).strip().splitlines()
         for stream, chunks in outputs.items()
     }
 
