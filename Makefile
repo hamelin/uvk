@@ -34,3 +34,6 @@ sync/%:
 jupyterlab:
 	uv run uvk --name uvk-test --display-name "UVK TEST" --sys-prefix $(UVK_ARGS)
 	uv run --group proto jupyter lab --no-browser
+
+ipython:
+	uv run --group proto ipython

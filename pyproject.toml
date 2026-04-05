@@ -50,5 +50,6 @@ dev = [
     "ty>=0.0.26",
 ]
 proto = [
+    "ipython>=9.10.0",
     "jupyterlab>=4.5.4",
 ]
