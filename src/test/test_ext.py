@@ -62,7 +62,7 @@ def kernel(kernelspec: str) -> Iterator[KernelManagerAndClient]:
 
 
 @pytest.fixture
-def client_kernel(kernel: KernelManagerAndClient) -> Iterator[BlockingKernelClient]:
+def client_kernel(kernel: KernelManagerAndClient) -> BlockingKernelClient:
     kernel.manager.restart_kernel()
     return kernel.client
 
@@ -323,3 +323,51 @@ def test_script_metadata_add_dependencies(
     if extraneous:
         assert any("trailing lines" in line for line in outputs.get("stderr", []))
     check_import_np_jl_succeeds(client_uvk)
+
+
+def test_uv_magic_pip_install(client_uvk: BlockingKernelClient) -> None:
+    check_import_np_jl_fails(client_uvk)
+    r, _ = execute(
+        client_uvk,
+        cook(
+            """\
+            %uv pip install numpy scipy>1.11 scikit-learn==1.8.0
+            """
+        ),
+    )
+    assert r.get("content", {}).get("status", "") == "ok"
+    check_import_np_jl_succeeds(client_uvk)
+
+
+def test_uv_magic_run(client_uvk: BlockingKernelClient) -> None:
+    r, outputs = execute(
+        client_uvk,
+        cook(
+            """\
+            %uv run python -c 'import os; print(os.environ["VIRTUAL_ENV"])'
+            import os
+            print(os.environ["VIRTUAL_ENV"])
+            """
+        ),
+    )
+    assert r.get("content", {}).get("status", "") == "ok"
+    stdout = outputs["stdout"]
+    assert len(stdout) >= 2
+    assert stdout[0] == stdout[1]
+
+
+def check_suffix_uv_interromark(client_uvk: BlockingKernelClient, suffix_expected: str) -> None:
+    r, _ = execute(client_uvk, "%uv?\n")
+    content = r.get("content", {})
+    assert content.get("status", "") == "ok"
+    output = "\n".join(
+        element.get("data", {}).get("text/plain", "") for element in content.get("payload", [])
+    )
+    assert output.strip().endswith(suffix_expected)
+
+
+def test_restore_uv_magick(client_uvk: BlockingKernelClient) -> None:
+    check_suffix_uv_interromark(client_uvk, "uvk/__init__.py")
+    r, _ = execute(client_uvk, "%restore_uv\n")
+    assert r.get("content", {}).get("status", "") == "ok"
+    check_suffix_uv_interromark(client_uvk, "IPython/core/magics/packaging.py")

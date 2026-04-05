@@ -11,17 +11,29 @@ from IPython.display import display, Markdown
 import logging as lg
 from packaging.requirements import Requirement
 from packaging.specifiers import SpecifierSet
+import shlex
 import shutil
 import subprocess as sp
 import sys
 from tempfile import NamedTemporaryFile
-from typing import cast
+from typing import Any, cast, overload, Protocol
 from warnings import warn
 
 from ._parse import parse_dependencies, parse_script_metadata
+from .util import uv_
 
 _PATH_UV = shutil.which("uv")
 LOG = lg.getLogger(__name__)
+
+
+class NamedMagic(Protocol):
+    __name__: str
+
+    @overload
+    def __call__(self, line_or_cell: str = "") -> Any: ...
+
+    @overload
+    def __call__(self, line: str, cell: str = "") -> Any: ...
 
 
 class CannotFindUV(Exception):
@@ -37,17 +49,23 @@ class CannotFindUV(Exception):
         )
 
 
+MAGICS_OVERRIDEN: dict[str, NamedMagic] = {}
+
+
 def load_ipython_extension(shell: InteractiveShell) -> None:
     if not _PATH_UV:
         raise CannotFindUV()
-    for magic, kind in [
-        (require_python, "line"),
-        (script_metadata, "cell"),
-        (dependencies, "line_cell"),
+    for magic_, kind, is_overriding in [
+        (require_python, "line", False),
+        (script_metadata, "cell", False),
+        (dependencies, "line_cell", False),
+        (_uv_(shell), "line", True),
+        (_restore_uv_(shell), "line", False),
     ]:
-        shell.register_magic_function(  # type: ignore
-            func=magic, magic_kind=kind, magic_name=magic.__name__
-        )
+        magic = cast(NamedMagic, magic_)
+        if is_overriding:
+            MAGICS_OVERRIDEN[magic.__name__] = shell.magics_manager.magics[kind][magic.__name__]
+        shell.register_magic_function(func=magic, magic_kind=kind, magic_name=magic.__name__)  # type: ignore
 
 
 def script_metadata(line: str, cell: str) -> None:
@@ -126,3 +144,41 @@ def _install_requirements(requirements: Iterable[str]) -> None:
         cmd = [cast(str, _PATH_UV), "pip", "install", "--requirements", file.name]
         LOG.debug("Run " + " ".join(cmd))
         sp.run(cmd).check_returncode()
+
+
+def _uv_(shell: InteractiveShell) -> NamedMagic:
+    def uv(line: str = "") -> None:
+        args = shlex.split(line)
+        shell.system(" ".join(shlex.quote(token) for token in uv_(args)))
+
+    return cast(NamedMagic, uv)
+
+
+def _restore_uv_(shell: InteractiveShell) -> NamedMagic:
+    def restore_uv(line: str = "") -> None:
+        if "uv" in shell.magics_manager.magics["line"]:
+            if "uv" in MAGICS_OVERRIDEN:
+                uv_previous = MAGICS_OVERRIDEN.pop("uv")
+                if callable(uv_previous):
+                    shell.register_magic_function(  # ty: ignore[missing-argument]
+                        func=uv_previous,
+                        magic_kind="line",
+                        magic_name="uv",
+                    )
+                    print(
+                        "Restored the implementation of %uv that the uvk extension had overriden."
+                    )
+                else:
+                    print(
+                        "WARNING: the %uv magic that the uvk extension overrode does not look like a Python callable. Will not attempt to restore it."
+                    )
+            else:
+                print(
+                    "The current %uv implementation was not registered by the uvk extension. No op."
+                )
+        else:
+            print(
+                "Strange: no %uv line magic is present. You may need to restart your kernel to restore this standard IPython functionality."
+            )
+
+    return cast(NamedMagic, restore_uv)

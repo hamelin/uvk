@@ -1,0 +1,66 @@
+import pytest
+import shlex
+from uv import find_uv_bin
+
+import uvk.util
+
+
+@pytest.mark.parametrize(
+    "command,expected",
+    [
+        ("run", f"{find_uv_bin()} run --active"),
+        ("init", f"{find_uv_bin()} init"),
+        ("add", f"{find_uv_bin()} add --active"),
+        ("remove", f"{find_uv_bin()} remove --active"),
+        ("version", f"{find_uv_bin()} version --active"),
+        ("sync", f"{find_uv_bin()} sync --active"),
+        ("lock", f"{find_uv_bin()} lock"),
+        ("export", f"{find_uv_bin()} export"),
+        ("tree", f"{find_uv_bin()} tree"),
+        ("format", f"{find_uv_bin()} format"),
+        ("venv", f"{find_uv_bin()} venv"),
+        ("build", f"{find_uv_bin()} build"),
+        ("publish", f"{find_uv_bin()} publish"),
+        ("help", f"{find_uv_bin()} help"),
+        ("auth login", f"{find_uv_bin()} auth login"),
+        ("auth logout", f"{find_uv_bin()} auth logout"),
+        ("auth token", f"{find_uv_bin()} auth token"),
+        ("auth dir", f"{find_uv_bin()} auth dir"),
+        ("tool run", f"{find_uv_bin()} tool run"),
+        ("tool install", f"{find_uv_bin()} tool install"),
+        ("tool upgrade", f"{find_uv_bin()} tool upgrade"),
+        ("tool list", f"{find_uv_bin()} tool list"),
+        ("tool uninstall", f"{find_uv_bin()} tool uninstall"),
+        ("tool update-shell", f"{find_uv_bin()} tool update-shell"),
+        ("tool dir", f"{find_uv_bin()} tool dir"),
+        ("python list", f"{find_uv_bin()} python list"),
+        ("python install", f"{find_uv_bin()} python install"),
+        ("python upgrade", f"{find_uv_bin()} python upgrade"),
+        ("python find", f"{find_uv_bin()} python find"),
+        ("python pin", f"{find_uv_bin()} python pin"),
+        ("python dir", f"{find_uv_bin()} python dir"),
+        ("python uninstall", f"{find_uv_bin()} python uninstall"),
+        ("python update-shell", f"{find_uv_bin()} python update-shell"),
+        ("pip compile", f"{find_uv_bin()} pip compile"),
+        ("pip sync", f"{find_uv_bin()} pip sync"),
+        ("pip install", f"{find_uv_bin()} pip install"),
+        ("pip uninstall", f"{find_uv_bin()} pip uninstall"),
+        ("pip freeze", f"{find_uv_bin()} pip freeze"),
+        ("pip list", f"{find_uv_bin()} pip list"),
+        ("pip show", f"{find_uv_bin()} pip show"),
+        ("pip tree", f"{find_uv_bin()} pip tree"),
+        ("pip check", f"{find_uv_bin()} pip check"),
+        ("cache clean", f"{find_uv_bin()} cache clean"),
+        ("cache prune", f"{find_uv_bin()} cache prune"),
+        ("cache dir", f"{find_uv_bin()} cache dir"),
+        ("cache size", f"{find_uv_bin()} cache size"),
+        ("self update", f"{find_uv_bin()} self update"),
+        ("self version", f"{find_uv_bin()} self version"),
+        ("", f"{find_uv_bin()}"),
+        ("-h", f"{find_uv_bin()} -h"),
+        ("--version", f"{find_uv_bin()} --version"),
+        ("asdf", f"{find_uv_bin()} asdf"),
+    ],
+)
+def test_uv_add_active(expected: str, command: str) -> None:
+    assert tuple(shlex.split(expected)) == uvk.util.uv_(shlex.split(command))
