@@ -11,6 +11,7 @@ from IPython.display import display, Markdown
 import logging as lg
 from packaging.requirements import Requirement
 from packaging.specifiers import SpecifierSet
+from pathlib import Path
 import shlex
 import subprocess as sp
 import sys
@@ -23,6 +24,7 @@ from ._parse import parse_dependencies, parse_script_metadata
 from .util import uv_
 
 LOG = lg.getLogger(__name__)
+PROJECT: list[str] = []
 
 
 class NamedMagic(Protocol):
@@ -45,6 +47,7 @@ def load_ipython_extension(shell: InteractiveShell) -> None:
         (dependencies, "line_cell", False),
         (_uv_(shell), "line", True),
         (_restore_uv_(shell), "line", False),
+        (_project_(shell), "line", False),
     ]:
         magic = cast(NamedMagic, magic_)
         if is_overriding:
@@ -133,7 +136,7 @@ def _install_requirements(requirements: Iterable[str]) -> None:
 def _uv_(shell: InteractiveShell) -> NamedMagic:
     def uv(line: str = "") -> None:
         args = shlex.split(line)
-        shell.system(" ".join(shlex.quote(token) for token in uv_(args)))
+        shell.system(" ".join(shlex.quote(token) for token in uv_(args, PROJECT)))
 
     return cast(NamedMagic, uv)
 
@@ -166,3 +169,47 @@ def _restore_uv_(shell: InteractiveShell) -> NamedMagic:
             )
 
     return cast(NamedMagic, restore_uv)
+
+
+def _project_(shell: InteractiveShell) -> NamedMagic:
+    def project(line: str = "") -> None:
+        if PROJECT:
+            raise ValueError(
+                "Once set, the kernel's project is immutable. Thus, you may not invoke %project more than once."
+            )
+        PROJECT.extend(["--project", str(Path(line or ".").resolve())])
+        _uv_(shell)("sync --inexact")
+
+        # uv sync against the chosen project adds that project's editable modules to the site
+        # packages of our isolated environment. Python usually sets up loaders for these as it
+        # starts up, so we must emulate this behaviour.
+        #
+        # An editable package named `blah`, at version x.y.z, will be associated to a directory
+        # named `blah-x.y.z.dist-info`, as well as either one of two files:
+        #
+        #     blah.pth                      or
+        #     __editable__.blah-x.y.z.pth
+        #
+        # In both cases, this .pth file contains the path to the directory with the source of the
+        # package, which we must add to sys.path. However, this .pth extension is also sometimes
+        # used for sourceable Python files by other bits of code! So we must be careful: as we
+        # hit .pth files wondering whether we should stick their contents in sys.path, let's make
+        # sure they correspond to a .dist-info to a directory, and that their contents is a valid
+        # directory. (Very silly to overload .pth, honestly. Not a fan.)
+        prefix = Path(sys.prefix)
+        for path in (Path(p) for p in sys.path):
+            if prefix in path.parents and all(
+                (path / f"_virtualenv.{ext}").is_file() for ext in ["py", "pth"]
+            ):
+                for pth in path.glob("*.pth"):
+                    if pth.name.startswith("__editable__."):
+                        name_version = pth.with_suffix("").name[len("__editable__.") :]
+                        pat_dist_info = f"{name_version}.dist-info"
+                    else:
+                        pat_dist_info = f"{pth.with_suffix('').name}-*.dist-info"
+                    if any(path.glob(pat_dist_info)):
+                        path_source = pth.read_text(encoding="utf-8").strip()
+                        if Path(path_source).is_dir() and path_source not in sys.path:
+                            sys.path.append(path_source)
+
+    return cast(NamedMagic, project)

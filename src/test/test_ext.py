@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from jupyter_client.manager import (
     BlockingKernelClient,
@@ -8,8 +9,11 @@ from jupyter_client.manager import (
 from jupyter_client.kernelspec import KernelSpecManager
 from pathlib import Path
 import pytest  # noqa
+import subprocess as sp
 import sys
+import tomllib
 from uuid import uuid4
+from uv import find_uv_bin
 
 from uvk.__main__ import prepare_kernelspec
 
@@ -71,9 +75,7 @@ ResultExec = dict
 Outputs = dict[str, list[str]]
 
 
-def execute(
-    client: BlockingKernelClient, code: str, timeout: float = 10.0
-) -> tuple[ResultExec, Outputs]:
+def execute(client: BlockingKernelClient, code: str) -> tuple[ResultExec, Outputs]:
     outputs: Outputs = {}
 
     def store_output(msg):
@@ -371,3 +373,113 @@ def test_restore_uv_magick(client_uvk: BlockingKernelClient) -> None:
     r, _ = execute(client_uvk, "%restore_uv\n")
     assert r.get("content", {}).get("status", "") == "ok"
     check_suffix_uv_interromark(client_uvk, "IPython/core/magics/packaging.py")
+
+
+def make_project(home: Path) -> None:
+    sp.run(
+        [
+            find_uv_bin(),
+            "init",
+            "--name",
+            home.name,
+            "--python",
+            sys.executable,
+            "--lib",
+            "--no-description",
+            "--author-from",
+            "none",
+            "--vcs",
+            "none",
+            "--build-backend",
+            "setuptools",
+            "--no-readme",
+            "--no-pin-python",
+            str(home),
+        ],
+    ).check_returncode()
+    sp.run([find_uv_bin(), "add", "--project", str(home), "requests"]).check_returncode()
+    sp.run([find_uv_bin(), "version", "--project", str(home), "0.0.2"]).check_returncode()
+
+
+@pytest.fixture
+def project_haha(tmp_path: Path) -> Path:
+    make_project(tmp_path / "haha")
+    return tmp_path / "haha"
+
+
+@contextmanager
+def import_before_after_project(
+    client_uvk: BlockingKernelClient,
+    project: Path,
+    name_import: str,
+) -> Iterator[None]:
+    r, _ = execute(client_uvk, f"import {name_import}\n")
+    assert r.get("content", {}).get("status", "") == "error"
+    r, _ = execute(client_uvk, f"%project {project}\n")
+    assert r.get("content", {}).get("status", "") == "ok"
+    yield None
+    r, _ = execute(client_uvk, f"import {name_import}\n")
+    assert r.get("content", {}).get("status", "") == "ok"
+
+
+def test_project_haha(client_uvk: BlockingKernelClient, project_haha: Path) -> None:
+    with import_before_after_project(client_uvk, project_haha, "requests"):
+        pass
+
+
+def test_project_add_dependency(client_uvk: BlockingKernelClient, project_haha: Path) -> None:
+    with import_before_after_project(client_uvk, project_haha, "xonsh"):
+        r, _ = execute(client_uvk, "%uv add xonsh\n")
+        assert r.get("content", {}).get("status", "") == "ok"
+        with (project_haha / "pyproject.toml").open(mode="rb") as file:
+            pyproject = tomllib.load(file)
+            dependencies = pyproject.get("project", {}).get("dependencies", [])
+            for name in ["requests", "xonsh"]:
+                assert any(dep.startswith(name) for dep in dependencies)
+
+
+def test_project_add_remove_breaks_stuff(
+    client_uvk: BlockingKernelClient, project_haha: Path
+) -> None:
+    r, output = execute(
+        client_uvk,
+        cook(
+            """\
+            from pathlib import Path
+            import sys
+            prefix = Path(sys.prefix)
+            print(sys.prefix)
+            assert (prefix / "bin" / "uv").is_file()
+            import uv
+            print(uv.find_uv_bin())
+            """
+        ),
+    )
+    assert r.get("content", {}).get("status", "") == "ok"
+    prefix, path_uv = output["stdout"]
+    assert Path(path_uv) == Path(prefix) / "bin" / "uv"
+
+    r, _ = execute(client_uvk, f"%project {project_haha}\n")
+    assert r.get("content", {}).get("status", "") == "ok"
+    r, _ = execute(client_uvk, "%uv add aiohttp pandas")
+    assert r.get("content", {}).get("status", "") == "ok"
+    r, _ = execute(client_uvk, "%uv remove requests\n")
+    assert r.get("content", {}).get("status", "") == "ok"
+    r, output = execute(client_uvk, "uv.find_uv_bin()")
+    content = r.get("content", {})
+    assert content.get("status", "") == "error"
+    assert content.get("ename", "") == "UvNotFound"
+
+
+def test_project_import_package(client_uvk: BlockingKernelClient, project_haha: Path) -> None:
+    with import_before_after_project(client_uvk, project_haha, "haha"):
+        pass
+    r, output = execute(client_uvk, "print(haha.hello())")
+    assert r.get("content", {}).get("status", "") == "ok"
+    assert "Hello from haha!" == "\n".join(output["stdout"]).strip()
+
+
+def test_project_immutable_once_set(client_uvk: BlockingKernelClient, project_haha: Path) -> None:
+    with import_before_after_project(client_uvk, project_haha, "requests"):
+        r, _ = execute(client_uvk, "%project\n")
+        assert r.get("content", {}).get("status", "") == "error"

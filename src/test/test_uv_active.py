@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 import pytest
 import shlex
 from uv import find_uv_bin
@@ -69,3 +70,26 @@ import uvk.util
 )
 def test_uv_add_active(expected: tuple[str, ...], command: str) -> None:
     assert expected == uvk.util.uv_(shlex.split(command))
+
+
+@pytest.mark.parametrize(
+    "project,expected",
+    [
+        ((), (find_uv_bin(), "add", "--python", sys.executable, "--active", "requests")),
+        (
+            ("--project", "asdf/qwer"),
+            (
+                find_uv_bin(),
+                "add",
+                "--python",
+                sys.executable,
+                "--project",
+                "asdf/qwer",
+                "--active",
+                "requests",
+            ),
+        ),
+    ],
+)
+def test_uv_project(expected: tuple[str, ...], project: Iterable[str]) -> None:
+    assert expected == uvk.util.uv_(("add", "requests"), project)
