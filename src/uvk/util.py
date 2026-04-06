@@ -1,6 +1,7 @@
 from collections.abc import Iterable
 import re
 import subprocess as sp
+import sys
 from uv import find_uv_bin
 
 
@@ -53,7 +54,7 @@ _REQUIRES_FLAG_ACTIVE = {
 _UV_HELP = {}
 
 
-def uv_(command: Iterable[str]) -> tuple[str, ...]:
+def uv_(command: Iterable[str], project: Iterable[str] = []) -> tuple[str, ...]:
     assert not isinstance(command, str)
     command_full = tuple(command)
     if not command_full:
@@ -67,12 +68,16 @@ def uv_(command: Iterable[str]) -> tuple[str, ...]:
         aux, *tail = tail
         head.append(aux)
 
+    head.extend(["--python", sys.executable])
+    head.extend(project)
+
     if verb not in _REQUIRES_FLAG_ACTIVE:
         look_up_active_flag(verb)
         assert verb in _REQUIRES_FLAG_ACTIVE
     if _REQUIRES_FLAG_ACTIVE[verb]:
         assert verb in _REQUIRES_FLAG_ACTIVE
         head.append("--active")
+
     return (*head, *tail)
 
 
