@@ -12,17 +12,16 @@ import logging as lg
 from packaging.requirements import Requirement
 from packaging.specifiers import SpecifierSet
 import shlex
-import shutil
 import subprocess as sp
 import sys
 from tempfile import NamedTemporaryFile
 from typing import Any, cast, overload, Protocol
+from uv import find_uv_bin
 from warnings import warn
 
 from ._parse import parse_dependencies, parse_script_metadata
 from .util import uv_
 
-_PATH_UV = shutil.which("uv")
 LOG = lg.getLogger(__name__)
 
 
@@ -36,25 +35,10 @@ class NamedMagic(Protocol):
     def __call__(self, line: str, cell: str = "") -> Any: ...
 
 
-class CannotFindUV(Exception):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(
-            (
-                "uv executable cannot be found; "
-                "it is critical for the features provided by "
-                f"extension {__name__}."
-            ),
-            *args,
-            **kwargs,
-        )
-
-
 MAGICS_OVERRIDEN: dict[str, NamedMagic] = {}
 
 
 def load_ipython_extension(shell: InteractiveShell) -> None:
-    if not _PATH_UV:
-        raise CannotFindUV()
     for magic_, kind, is_overriding in [
         (require_python, "line", False),
         (script_metadata, "cell", False),
@@ -141,7 +125,7 @@ def _install_requirements(requirements: Iterable[str]) -> None:
             print(dep, file=file)
         file.flush()
 
-        cmd = [cast(str, _PATH_UV), "pip", "install", "--requirements", file.name]
+        cmd = [find_uv_bin(), "pip", "install", "--requirements", file.name]
         LOG.debug("Run " + " ".join(cmd))
         sp.run(cmd).check_returncode()
 
