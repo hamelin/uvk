@@ -66,6 +66,10 @@ import uvk.util
         ("--version", (find_uv_bin(), "--version", "--python", sys.executable)),
         ("asdf", (find_uv_bin(), "asdf", "--python", sys.executable)),
         ("asdf qwer", (find_uv_bin(), "asdf", "--python", sys.executable, "qwer")),
+        (
+            "sync --inexact",
+            (find_uv_bin(), "sync", "--python", sys.executable, "--active", "--inexact"),
+        ),
     ],
 )
 def test_uv_add_active(expected: tuple[str, ...], command: str) -> None:
