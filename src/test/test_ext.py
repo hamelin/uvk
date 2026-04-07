@@ -465,10 +465,17 @@ def test_project_add_remove_breaks_stuff(
     assert r.get("content", {}).get("status", "") == "ok"
     r, _ = execute(client_uvk, "%uv remove requests\n")
     assert r.get("content", {}).get("status", "") == "ok"
-    r, output = execute(client_uvk, "uv.find_uv_bin()")
+    r, output = execute(client_uvk, "print(uv.find_uv_bin())")
     content = r.get("content", {})
-    assert content.get("status", "") == "error"
-    assert content.get("ename", "") == "UvNotFound"
+    match content.get("status", ""):
+        case "error":
+            assert content.get("ename", "") == "UvNotFound"
+        case "ok":
+            # uv is found from some other source than current environment.
+            assert len(output.get("stdout", [])) == 1
+            assert output["stdout"][0].strip() != path_uv
+        case _:
+            pytest.fail("Unexpected outcome of find_uv_bin()")
 
 
 def test_project_import_package(client_uvk: BlockingKernelClient, project_haha: Path) -> None:
