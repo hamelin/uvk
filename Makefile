@@ -1,33 +1,32 @@
-UV_RUN = uv run --dev
+VERSIONS_PYTHON = 3.11 3.12 3.13 3.14
+PYTHON_LOCAL = python
+UV = uv $(1) --python $(notdir $(2)) --dev
 
-VERSIONS_PYTHON = 11 12 13 14
-VERSION_DEFAULT = $(firstword $(VERSIONS_PYTHON))
-
-every-check: every-check/$(VERSION_DEFAULT)
+every-check: every-check/$(PYTHON_LOCAL)
 every-check/%: test/% type/% pep8/%
 	@true
 all: $(foreach v,$(VERSIONS_PYTHON),every-check/$(v))
 
 tests: test
-test: test/$(VERSION_DEFAULT)
+test: test/$(PYTHON_LOCAL)
 test/%: format/%
-	$(UV_RUN) pytest $(and $(dbg),--last-failed --trace) $(and $(failfast),-x) $(and $(pdb),--pdb) $(and $(only),-k "$(only)") src
+	$(call UV,run,$@) pytest $(and $(only),$(if $(subst -,,$(only)),-k $(only),--last-failed)) $(and $(failfast),-x) $(and $(pdb),--pdb) src
 
-type: type/$(VERSION_DEFAULT)
+type: type/$(PYTHON_LOCAL)
 type/%: format/%
-	$(UV_RUN) ty check src
+	$(call UV,run,$@) ty check src
 
-pep8: pep8/$(VERSION_DEFAULT)
+pep8: pep8/$(PYTHON_LOCAL)
 pep8/%: format/%
-	$(UV_RUN) ruff check src
+	$(call UV,run,$@) ruff check src
 
-format: format/$(VERSION_DEFAULT)
+format: format/$(PYTHON_LOCAL)
 format/%: sync/%
-	$(UV_RUN) ruff format src
+	$(call UV,run,$@) ruff format src
 
-sync: sync/$(VERSION_DEFAULT)
+sync: sync/$(PYTHON_LOCAL)
 sync/%:
-	uv sync --dev --python 3.$(@F)
+	$(call UV,sync,$@)
 
 .SECONDARY:
 
