@@ -32,6 +32,11 @@ Homepage = "https://github.com/hamelin/uvk"
 [project.scripts]
 uvk = "uvk.__main__:main"
 
+[project.optional-dependencies]
+docs = [
+    "mkdocs>=1.6.1",
+]
+
 [tool.setuptools]
 zip-safe = true
 include-package-data = true
