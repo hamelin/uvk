@@ -10,7 +10,7 @@ all: $(foreach v,$(VERSIONS_PYTHON),every-check/$(v))
 tests: test
 test: test/local
 test/%: format/%
-	$(call UV,run,$@) pytest $(and $(only),$(if $(subst -,,$(only)),-k $(only),--last-failed)) $(and $(failfast),-x) $(and $(pdb),--pdb) src
+	$(call UV,run,$@) pytest $(and $(only),$(if $(filter -,$(only)),--last-failed,-k $(only))) $(and $(fail1),-x) $(and $(pdb),--pdb) src
 
 type: type/local
 type/%: format/%
