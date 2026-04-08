@@ -9,10 +9,11 @@ mkdocs:
   configuration: mkdocs.yml
 
 python:
-  install: pip
-  path: .
-  extra-requirements:
-    - docs
+  install:
+    - method: pip
+      path: .
+      extra-requirements:
+        - docs
 
 mkdocs:
   configuration: mkdocs.yml
