@@ -1,6 +1,7 @@
 VERSIONS_PYTHON = 3.11 3.12 3.13 3.14
 PYTHON_LOCAL = $(shell python -c "import sys; print(sys.executable)")
 UV = uv $(1) --python $(subst local,$(PYTHON_LOCAL),$(notdir $(2))) --dev
+UV_MKDOCS = uv run --all-extras mkdocs
 
 every-check: every-check/local
 every-check/%: test/% type/% pep8/%
@@ -40,3 +41,9 @@ ipython:
 banner: banner/local
 banner/%:
 	$(call UV,run,$@) --script banner.py
+
+docs/build:
+	$(UV_MKDOCS) build
+
+docs/serve:
+	$(UV_MKDOCS) serve --watch . --watch ./docs --strict $(and $(address),--dev-addr $(address))
