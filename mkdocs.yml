@@ -1,2 +1,40 @@
 site_name: UVK &mdash; Fully-isolated IPython kernel through uv
 theme: readthedocs
+nav:
+  - On GitHub: https://github.com/hamelin/uvk/
+  - Tutorials: tutorials/index.md
+  - How to: howto/index.md
+  - Deep dives: deepdives/index.md
+  - Reference:
+      - The UVK IPython extension: reference/uvk_ext.md
+plugins:
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - src
+          options:
+            docstring_options:
+              ignore_init_summary: true
+              trim_doctest_flags: true
+            docstring_section_style: table
+            merge_init_into_class: false
+            relative_crossrefs: true
+            scoped_crossrefs: true
+            unwrap_annotated: true
+            filters: public
+            inherited_members: true
+            summary: true
+            heading_level: 3
+            parameter_headings: true
+            type_parameter_headings: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            line_length: 88
+            separate_signature: true
+            show_signature_annotations: true
+            show_signature_type_parameters: true
+            backlinks: tree
+            show_bases: false
+            show_inheritance_diagram: false

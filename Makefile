@@ -46,4 +46,4 @@ docs/build:
 	$(UV_MKDOCS) build
 
 docs/serve:
-	$(UV_MKDOCS) serve --watch . --watch ./docs --strict $(and $(address),--dev-addr $(address))
+	$(UV_MKDOCS) serve --livereload --strict --watch src/uvk $(and $(address),--dev-addr $(address))

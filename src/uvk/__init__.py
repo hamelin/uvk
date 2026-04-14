@@ -1,8 +1,12 @@
 """
-The uvk IPython extension provides magicks to manage the dependencies
-of an isolated kernel. It also ensures that the uv executable is visible
-by the IPython process, as shelling out to uv is how most of the kernel's
-specific functionalities are delivered.
+This IPython extension provides [magics](https://ipython.readthedocs.io/en/stable/interactive/magics.html)
+to enforce the dependency requirements of a **uv**-isolated IPython kernel,
+at **uv** speed.
+Load the extension with a cell such as:
+
+```ipython
+%load_ext uvk
+```
 """
 
 from collections.abc import Iterable
@@ -45,9 +49,9 @@ def load_ipython_extension(shell: InteractiveShell) -> None:
         (require_python, "line", False),
         (script_metadata, "cell", False),
         (dependencies, "line_cell", False),
-        (_uv_(shell), "line", True),
-        (_restore_uv_(shell), "line", False),
-        (_project_(shell), "line", False),
+        (uv(shell), "line", True),
+        (restore_uv(shell), "line", False),
+        (project(shell), "line", False),
     ]:
         magic = cast(NamedMagic, magic_)
         if is_overriding:
@@ -56,6 +60,49 @@ def load_ipython_extension(shell: InteractiveShell) -> None:
 
 
 def script_metadata(line: str, cell: str) -> None:
+    """
+    PyPA [script metadata](https://packaging.python.org/en/latest/specifications/inline-script-metadata/) in a cell.
+
+    **Usage:**
+
+    ```ipython
+    %%script_metadata
+    # /// script
+    # requires-python = "..."
+    # dependencies = [
+    #     "list",
+    #     "of",
+    #     "package",
+    #     "requiments",
+    # ]
+    # ///
+    ```
+
+    Processes the cell as script metadata,
+    effectively checking a Python interpreter specification is met by the
+    running interpreter, and deploys the packages specified through
+    the `dependencies` field.
+
+    Example:
+        ```ipython
+        %%script_metadata
+        # /// script
+        # requires-python = ">=3.13"
+        # dependencies = ["numpy", "pandas>=3"]
+        # ///
+        ```
+        <div class="bgpre bgred">
+        <pre>
+        Resolved <strong>4 packages</strong> in 48ms
+        Installed <strong>2 packages</strong> in 59ms
+         <span style="color: green">+</span> <strong>numpy</strong>==2.4.4
+         <span style="color: green">+</span> <strong>pandas</strong>==3.0.2
+        </pre>
+        </div>
+
+    Raises:
+        PythonRequirementNotSatisfied: `requires-python` specification was not satisfied.
+    """
     if line:
         warn(
             "Non-empty line argument (on the right of %%script_metadata) is ignored",
@@ -69,6 +116,15 @@ def script_metadata(line: str, cell: str) -> None:
 
 
 class PythonRequirementNotSatisfied(Exception):
+    """
+    Raised when the current Python interpreter is checked against a
+    version specification, and fails to satisfy it.
+
+    Attributes:
+        spec:    Specification that was not satisfied.
+        version: Version of this Python interpreter checked against the specification.
+    """
+
     def __init__(self, spec: str, version: str) -> None:
         super().__init__(
             (
@@ -88,10 +144,86 @@ def _require_python(spec: str) -> None:
 
 
 def require_python(line: str = "") -> None:
+    """\
+    Check Python satisfies the given specification.
+
+    Usage:
+
+    ```ipython
+    %require_python >=3.11
+    ```
+    
+    Verifies that the current Python interpreter satisfies the given version
+    specification, and raises [PythonRequirementNotSatisfied](#pythonrequirementnotsatisfied)
+    if it doesn't.
+    Remark how, contrary to **uv run**'s handling of script metadata,
+    this cell magic cannot select an alternative Python version that satisfies
+    the specification. **uv run** parses the script metadata ahead of starting
+    the Python interpreter. In contrast, this magic is computed from the
+    already-running, and IPython does not manage the Python interpreter.
+    See [this deep dive](../deepdives/uv-uvkernel-uvk.md) for more details on
+    enforcing a Python interpreter requirement.
+
+    Example:
+        ```ipython
+        import sys
+        sys.version
+        ```
+        <div class="bgpre">
+        <pre>
+        3.12.11 (main, Jul 23 2025, 00:18:05) [Clang 20.1.4 ]
+        </pre>
+        </div>
+        ```ipython
+        %require_python >=3.13
+        ```
+        <div class="bgpre bgred">
+        <pre>
+        <span class="red">--------------------------------------------------------------------------
+        PythonRequirementNotSatisfied</span>             Traceback (most recent call last)
+        ...
+        </pre>
+        </div>
+    """
     _require_python(str(line))
 
 
 def dependencies(line: str, cell: str = "") -> None:
+    """
+    Deploy a set of package requirements.
+
+    Usage:
+
+    ```ipython
+    %%dependencies
+    package+constraint
+    ...
+    ```
+
+    Deploys a set of package requirements using `uv pip install`.
+    Contrary to `requirements.txt`, there should be **no blank space**
+    between the package name and the package version.
+
+    Example:
+        ```ipython
+        %%dependencies
+        duckdb
+        requests<2.33
+        pygments>=2.18
+        ```
+        <div class="bgpre bgred">
+        <pre>
+        Resolved <span class="bold">7 packages</span> in 4ms
+        Installed <span class="bold">6 packages</span> in 4ms
+         <span class="green">+</span> <span class="bold">certifi</span>==2026.2.25
+         <span class="green">+</span> <span class="bold">charset</span>-normalizer==3.4.7
+         <span class="green">+</span> <span class="bold">duckdb</span>==1.5.2
+         <span class="green">+</span> <span class="bold">idna</span>==3.11
+         <span class="green">+</span> <span class="bold">requests</span>==2.32.5
+         <span class="green">+</span> <span class="bold">urllib3</span>==2.6.3
+        </pre>
+        </div>
+    """
     dependencies_raw = (f"{line.strip()}\n{cell}" if line and cell else line or cell).strip()
     dependencies_normalized = list(parse_dependencies(dependencies_raw))
     if cell:
@@ -133,15 +265,60 @@ def _install_requirements(requirements: Iterable[str]) -> None:
         sp.run(cmd).check_returncode()
 
 
-def _uv_(shell: InteractiveShell) -> NamedMagic:
-    def uv(line: str = "") -> None:
+def uv(shell: InteractiveShell) -> NamedMagic:
+    """
+    Spawn and run **uv**.
+
+    Usage:
+
+    ```ipython
+    %uv command arguments
+    ```
+
+    This reimplementation of IPython's own `%uv` line magic takes extra care
+    to set the active environment (using the `--active`) flag for **uv**
+    subcommands that use it, as well as set the Python executable so as to
+    avoid switching away from the interpreter running this kernel.
+    If this override of IPython's `%uv` is undesired and one would rather
+    get it back, simply run [`%restore_uv`](#restore_uv).
+
+    Example:
+        ```ipython
+        %uv run python -c "import os; print(os.environ['VIRTUAL_ENV'])"
+        ```
+        <div class="bgpre">
+        <pre>/home/heyhey/.cache/uv/builds-v0/.tmpoPZabc</pre>
+        </div>
+        ```ipython
+        %uv run --isolated python -c "import os; print(os.environ['VIRTUAL_ENV'])"
+        ```
+        <div class="bgpre">
+        <pre>
+        Installed <span class="bold">37 packages</span> in 92ms
+        /home/heyhey/.cache/uv/builds-v0/.tmpFlSlPn
+        </pre>
+        </div>
+    """
+
+    def _uv(line: str = "") -> None:
         args = shlex.split(line)
         shell.system(" ".join(shlex.quote(token) for token in uv_(args, PROJECT)))
 
-    return cast(NamedMagic, uv)
+    _uv.__name__ = "uv"
+    return cast(NamedMagic, _uv)
 
 
-def _restore_uv_(shell: InteractiveShell) -> NamedMagic:
+def restore_uv(shell: InteractiveShell) -> NamedMagic:
+    """
+    Restore the standard IPython `%uv` magic.
+
+    Usage:
+
+    ```ipython
+    %restore_uv
+    ```
+    """
+
     def restore_uv(line: str = "") -> None:
         if "uv" in shell.magics_manager.magics["line"]:
             if "uv" in MAGICS_OVERRIDEN:
@@ -168,17 +345,98 @@ def _restore_uv_(shell: InteractiveShell) -> NamedMagic:
                 "Strange: no %uv line magic is present. You may need to restart your kernel to restore this standard IPython functionality."
             )
 
+    restore_uv.__name__ = "restore_uv"
     return cast(NamedMagic, restore_uv)
 
 
-def _project_(shell: InteractiveShell) -> NamedMagic:
-    def project(line: str = "") -> None:
+def project(shell: InteractiveShell) -> NamedMagic:
+    """
+    Attach a **uv** project to the kernel.
+
+    Usage:
+
+    ```ipython
+    %project [path to project]
+    ```
+
+    If no path is provided, the current directory is used as project anchor.
+
+    This sets internal parameters so that invocations of `%uv` will automatically
+    set the `--project` flag (as appropriate to subcommand) and, thus direct
+    **uv** tasks to the chosen project.
+    It also **uv sync**s the isolated environment to that project's dependencies.
+
+    Note:
+        This magic can be used **only once** during the lifetime of a kernel
+        process. To change the project, the kernel must be restarted.
+
+    Raises:
+        ValueError: when this magic is called again after the project has been set.
+
+    Example:
+        ```ipython
+        from pathlib import Path
+        dir_mock_project = Path.home() / "uvk_mock_project"
+        %uv init --name mock_project --package --bare --no-description {dir_mock_project}
+        ```
+        <div class="bgpre">
+        <pre>
+        Initialized project `<span class="cyan">mock-project</span>` at `<span class="cyan">/home/heyhey/uvk-mock-project</span>`
+        </pre>
+        </div>
+        ```ipython
+        %project {dir_mock_project}
+        ```
+        <div class="bgpre">
+        <pre>
+        Resolved <span class="bold">1 package</span> in 6ms
+        Prepared <span class="bold">1 package</span> in 5ms
+        Installed <span class="bold">1 package</span> in 2ms (from file:///home/heyhey/uvk-m
+         <span class="green">+</span> <span class="bold">mock-project</span>==0.1.0 (from file:///home/heyhey/uvk-mock-project)
+        </pre>
+        </div>
+        ```ipython
+        %uv add pandas requests
+        import pandas as pd  # Will just import without issue
+        %uv tree
+        ```
+        <div class="bgpre">
+        <pre>
+        Resolved <span class="bold">11 packages</span> in 82ms
+        Prepared <span class="bold">1 package</span> in 5ms
+        Uninstalled <span class="bold">1 package</span> in 0.91ms
+        Installed <span class="bold">8 packages</span> in 57ms
+         <span class="green">+</span> <span class="bold">certifi</span>==2026.2.25
+         <span class="green">+</span> <span class="bold">charset-normalizer</span>==3.4.7
+         <span class="green">+</span> <span class="bold">idna</span>==3.11
+         <span class="yellow">~</span> <span class="bold">mock-project</span>==0.1.0 (from file:///home/heyhey/uvk-mock-project)
+         <span class="green">+</span> <span class="bold">numpy</span>==2.4.4
+         <span class="green">+</span> <span class="bold">pandas</span>==3.0.2
+         <span class="green">+</span> <span class="bold">requests</span>==2.33.1
+         <span class="green">+</span> <span class="bold">urllib3</span>==2.6.3
+        Using CPython 3.12.11 interpreter at: /home/heyhey/.cache/uv/builds-v0/.tmpculMrO/bin/python
+        Resolved <span class="bold">11 packages</span> in 0.76ms
+        mock-project v0.1.0
+        ├── pandas v3.0.2
+        │   ├── numpy v2.4.4
+        │   └── python-dateutil v2.9.0.post0
+        │       └── six v1.17.0
+        └── requests v2.33.1
+            ├── certifi v2026.2.25
+            ├── charset-normalizer v3.4.7
+            ├── idna v3.11
+            └── urllib3 v2.6.3
+        </pre>
+        </div>
+    """
+
+    def _project(line: str = "") -> None:
         if PROJECT:
             raise ValueError(
                 "Once set, the kernel's project is immutable. Thus, you may not invoke %project more than once."
             )
         PROJECT.extend(["--project", str(Path(line or ".").resolve())])
-        _uv_(shell)("sync --inexact")
+        uv(shell)("sync --inexact")
 
         # uv sync against the chosen project adds that project's editable modules to the site
         # packages of our isolated environment. Python usually sets up loaders for these as it
@@ -212,4 +470,5 @@ def _project_(shell: InteractiveShell) -> NamedMagic:
                         if Path(path_source).is_dir() and path_source not in sys.path:
                             sys.path.append(path_source)
 
-    return cast(NamedMagic, project)
+    _project.__name__ = "project"
+    return cast(NamedMagic, _project)
