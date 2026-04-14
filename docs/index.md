@@ -16,40 +16,63 @@ executed, and the ad hoc virtual environment is discarded when the kernel is shu
 
 ## Quickstart
 
-The following examples assume one just created and activated a virtual environment
-in which to run.
+### Step 1: getting UVK kernels
 
-### 1. Set up
+The following assume basic familiarity with [uvx](https://docs.astral.sh/uv/concepts/tools/).
 
-As a shared workstation administrator, deploy uvk with Jupyterhub:
+**On one's own computer, in a terminal**
+
+<style>
+  div.grid-commands {
+    display: grid;
+    grid-template: [unixish] "." 1fr [windows] "." 1fr / [platform] auto [command] 1fr;
+    column-gap: 5mm;
+    margin-bottom: 1.2em;
+  }
+  .grid-commands .unixish {
+    grid-row: unixish / span 1;
+  }
+  .grid-commands .windows {
+    grid-row: windows / span 1;
+  }
+  .grid-columns .platform {
+    grid-column: platform / span 1;
+  }
+  .grid-columns .command {
+    grid-column: 3 / span 1;
+  }
+</style>
+<div class="grid-commands">
+  <div class="unixish platform">UNIX-ish</div>
+  <div class="unixish command">
+    <code>uvx --from=jupyterlab --with=uvk $SHELL -c "uvk --sys-prefix && jupyter lab"</code>
+  </div>
+  <div class="windows platform">Windows</div>
+  <div class="windows command">
+    <code>uvx --from=jupyterlab --with=uvk cmd /c "uvk --sys-prefix && jupyter lab"</code>
+  </div>
+</div>
+
+**On a Jupyterhub single-user server**
 
 ```sh
-pip install jupyterhub jupyterlab uvk  # Includes uv
-uvk                                    # Provide global access to the uvk kernelspec
-jupyterlab
+uvx uvk --user
 ```
 
-As a Jupyterhub user, deploy uvk out of the current environment:
+Then just wait for the **uvk (Python 3.xx)** icon to show up on your launcher.
 
-```sh
-pip install uvk
-uvk --user  # Add the uvk kernelspec as user-specific
-# Just wait for the uvk icon to appear in the Launcher.
-```
+<style>
+span.sans {
+  font-family: sans-serif;
+}
+</style>
 
-From a Linux/MacOS shell, with uv installed, run Jupyter Lab with Python
-kernels managed with uvk:
+### Step 2: in a notebook with the <span class="sans">uvk</span> kernel, use the <span class="sans">uvk</span> extension to deploy package dependencies
 
-```sh
-uv run --with=jupyterlab --with=uvk $SHELL <<SCRIPT
-uvk --sys-prefix
-jupyter lab
-SCRIPT
-```
-
-### 2. In a notebook
+Run a pair of cells to assert the Python interpreter version and packages you need.
 
 ```ipython
+%load_ext uvk
 %python_version >=3.13
 ```
 
@@ -69,104 +92,49 @@ umap-learn>=0.5.10
   .twocol {
     display: grid;
     grid-template:
-      [header] "." auto [end-header]
-      "." 8pt
-      [text] "." auto [end-text]
-      / [jupyterhub] 1fr [gap] 16pt [selfcontained] 1fr [end];
-    width: 100%;
+      "." auto
+      / [jupyterhub] 1fr [selfcontained] 1fr;
+    column-gap: 10mm;
   }
 
-  .twocol-header {
-    grid-row: header;
-    font-weight: bold;
+  .twocol .jupyterhub {
+    grid-row: 1 / span 1;
+    grid-column: jupyterhub / span 1;
   }
-
-  .twocol-jupyterhub {
-    grid-column: jupyterhub;
-  }
-
-  .twocol-text {
-    grid-row: text;
-  }
-
-  .twocol-selfcontained {
-    grid-column: selfcontained;
+  .twocol .selfcontained {
+    grid-row: 1 / span 1;
+    grid-column: selfcontained / span 1;
   }
 </style>
 <div class="twocol">
-  <div class="twocol-header twocol-jupyterhub">
-    Improved flexibility in Jupyterhub workstations
+  <div class="jupyterhub">
+    Shared workstations fronted with [Jupyterhub](https://jupyter.org/hub)
+    will provide some reasonable base computing environment,
+    but building one's own custom environment requires awkward management of
+    virtual environments and associated Jupyter kernels.
+    <span class=sans>uvk</span> completely mitigates these difficulties.</span>
+    <a href="deepdives/about/#jupyterhub">Read further</a>
   </div>
-  <div class="twocol-text twocol-jupyterhub">
-    <p>
-      When one needs packages that are not part of the default Jupyterhub
-      kernel, one typically builds one's own environments and then install
-      <a href="https://docs.jupyter.org/en/latest/projects/kernels.html">kernelspecs</a>
-      respectively tied to each of these environments.
-      This is a clumsy approach: the notebooks authored against each of these
-      environment-specific kernels store that kernel's identification.
-      In order to share these notebooks,
-      either one must share complicated instructions for deploying kernels
-      named per their own environments,
-      or one must guide their users through choosing a new kernel, presumably
-      the default IPython kernel, the first time they open the shared
-      notebook. (In this latter case,
-      the notebook is modified by this new kernel setting,
-      padding eventual diff hunks with spurious metadata changes.)
-    </p>
-    <p>
-      With uvk, additional package requirements are encoded into the notebook,
-      whose kernel gets set as <strong>uvk</strong>.
-      Standalone notebooks specify these requirements similarly to
-      <a href="https://packaging.python.org/en/latest/specifications/inline-script-metadata/">script
-      metadata</a> (as uv can leverage to isolate a <a href="https://packaging.python.org/en/latest/specifications/inline-script-metadata/">script's
-      dependencies</a>).
-      Notebooks that belong to projects can grab dependencies off of the those
-      projects' <samp>pyproject.toml</samp>.
-      In all cases, no explicit environment nor kernelspec need to be
-      created, managed nor cleaned up by the user.
-    </p>
-  </div>
-  <div class="twocol-header twocol-selfcontained">
-    Authoring self-contained notebooks
-  </div>
-  <div class="twocol-text twocol-selfcontained">
-    <p>
-      Since Jupyter notebooks have been around,
-      they posed the tantalizing possibility of sharing them
-      <em>by themselves</em>.
-      However,
-      most Jupyter users lean on a panoply of nonstandard package
-      dependencies. Notebooks starting with a `%pip` magic to fetch these
-      dependencies require the reader running the notebook to ensure this
-      setup occurs in an isolated environment <em>they</em> must set up
-      themselves. Even if notebook authors share metadata
-      (e.g. <samp>requirements.txt</samp>)
-      to set up the environment, the reader remains on the hook to host and
-      manage the environment. How rude!
-      <!--
-      Some communities manage to collaborate more easily through some
-      environments shared ahead of time by convention (using platforms like
-      Jupyterhub), and thus may exchange
-      notebooks more easily through such collaboration tools as
-      <a href="https://github.com/nbgallery/nbgallery">NBGallery</a>.
-      This author's experience within such communities is that some authors
-      invariably require something that is not part of shared environment,
-      and uses some <samp>%pip install</samp> that pollute the readers'
-      environment (under a reasonable assumption that it can be easily reset
-      to its original state).
-      -->
-    </p>
-    <p>
-      uvk fills this gap by starting the IPython kernel process through a
-      <samp>uv run --isolated</samp> command line.
-      This instantiates a virtual environment on the fly, which can be
-      modified harmlessly with <samp>%pip install</samp> and similar
-      statements. In addition, the magics of the <a href="reference/">uvk
-      IPython extension</a> leverage the very fast package deployment tooling
-      provided by uv. The outcome is no-touch, transparent computation
-      isolation traded off for a very small redeployment cost on each kernel
-      start-up.
-    </p>
+  <div class="selfcontained">
+    In the most general sense, Jupyter notebook are not _self-contained_
+    computing artifacts.
+    Sharing notebooks require adding them to a group of metadata files that
+    facilitate recreating the computing environment they can run in
+    (e.g. <samp>requirements.txt</samp>, <samp>pyproject.toml</samp>, etc.).
+    <span class=sans>uvk</span> provide elegant means to embed this metadata
+    as part of the notebook,
+    enabling their self-contained executaion on a <span class=sans>uvk</span>
+    kernel anywhere else.
+    <a href="deepdives/about/#selfcontained">Read further</a>
   </div>
 </div>
+
+## Going further
+
+- [About <span class="sans">uvk</span>](deepdives/about.md)
+- [Tutorials](tutorials/index.md)
+- [How to?](howto/index.md) recipes and [notebook examples](https://github.com/hamelin/uvk/examples/)
+- [Deep dives](deepdives/index.md) into the details
+- [Tool and API reference](reference/index.md)
+
+Copyright 2026 Benoit Hamelin.

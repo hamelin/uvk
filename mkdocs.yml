@@ -3,10 +3,12 @@ theme: readthedocs
 nav:
   - On GitHub: https://github.com/hamelin/uvk/
   - Tutorials: tutorials/index.md
-  - How to: howto/index.md
+  - How to?: howto/index.md
   - Deep dives: deepdives/index.md
   - Reference:
-      - The UVK IPython extension: reference/uvk_ext.md
+    - The UVK IPython extension: reference/uvk_ext.md
+  - Everything else:
+    - License (MIT): license.md
 plugins:
   - mkdocstrings:
       handlers:
