@@ -3,7 +3,7 @@
   <img src="images/logo.svg"/>
 </div>
 <div style="flex: 1 1;">
-<h1><span style="color: orange;">uvk:</span> Fully-isolated IPython kernel through uv</h1>
+<h1><span style="font-family: sans-serif; font-size: 2em;">uvk</span><br> Fully-isolated IPython kernel through uv</h1>
 </div>
 </div>
 

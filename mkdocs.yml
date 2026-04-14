@@ -1,4 +1,4 @@
-site_name: UVK &mdash; Fully-isolated IPython kernel through uv
+site_name: "uvk: Fully-isolated IPython kernel through uv"
 theme: readthedocs
 nav:
   - On GitHub: https://github.com/hamelin/uvk/
