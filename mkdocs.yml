@@ -29,8 +29,8 @@ plugins:
             parameter_headings: true
             type_parameter_headings: true
             show_root_full_path: false
-            show_symbol_type_heading: true
-            show_symbol_type_toc: true
+            show_symbol_type_heading: false
+            show_symbol_type_toc: false
             line_length: 88
             separate_signature: true
             show_signature_annotations: true
