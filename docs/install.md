@@ -33,7 +33,7 @@ Here are instructions for the most common situations:
 |:-----------------------------------|:-----------------------------|:-------------------|
 | Windows                            | Classic command prompt (CMD) | `.\jupyter\Scripts\activate.bat` |
 |                                    | Powershell                   | `.\jupyter\Scripts\Activate.ps1` |
-| UNIX-ish (GNU/Linux, \*BSD, MacOS) | Bash or Zsh                  | `. jupyter/bin/activate` |
+| [UNIX-ish](#unixish)               | Bash or Zsh                  | `. jupyter/bin/activate` |
 |                                    | Fish                         | `source jupyter/bin/activate.fish` |
 |                                    | Nushell                      | `overlay use jupyter/bin/activate.nu` |
 
@@ -54,9 +54,44 @@ jupyter lab  # or jupyter notebook
 and one should see the <span class="uvk">uvk</span> kernel icon to start authoring a notebook
 against it.
 
+<a id="screenshot-jupyterlab"></a>
 ![Screenshot of Jupyter Lab with uvk kernel](images/screenshot-jupyterlab-uvk.png)
 
-### Parallel between the `uvk` executable and IPyKernel
+### Using Conda
+
+We build a Conda environment named `jupyter` in which to install Jupyter Lab/Notebook.
+The activation of this environment is not dictated by operating system or shell.
+However, we must still use Pip to install <span class="uvk">uvk</span>,
+as it is not distributed as a Conda package.
+
+```sh
+conda create -n jupyter --yes jupyter jupyterlab
+conda activate jupyter
+pip install uvk
+uvk --sys-prefix
+jupyter lab
+```
+
+You should then expect to see a browser window or tab open with a screen similar to [above](#screenshot-jupyterlab).
+
+### Using uv
+
+Since we are starting our own Jupyter instance,
+the _proper_ way of doing so is by running it as a [tool](https://docs.astral.sh/uv/concepts/tools/),
+using `uv tool run` or its shorthand, `uvx`.
+A few awkward details come up, however,
+because we must compose the launch of `uvk` and the Jupyter instance.
+The following command does the trick,
+with variations between Windows and UNIX-ish:
+
+| OS        | Running <span class="uvk">uvk</span> then Jupyter Lab through uv               |
+|:----------|:-------------------------------------------------------------------------------|
+| Windows   | `uvx --from=jupyterlab --with=uvk cmd /c "uvk --sys-prefix && jupyter lab"`    |
+| UNIX-ish  | `uvx --from=jupyterlab --with=uvk $SHELL -c "uvk --sys-prefix && jupyter lab"` |
+
+The UNIX-ish variant uses the `SHELL` environment variable so as to work regardless of the [shell in use](#shellinuse).
+
+## Installing regular IPython kernel compared to `uvk`
 
 Jupyter instances all come with a pre-deployed IPython kernel,
 named by default **Python 3 (ipykernel)**.
@@ -79,3 +114,8 @@ uvk --name my_uvk --display-name 'I liuvke this a lot'
 
 Invoke `uvk --help` for a terse listing of the command line arguments.
 The [full reference](reference/uvk_cli.md) includes some more complex examples.
+
+## Notes
+
+- <a id="unixish"></a>The term UNIX-ish designates here any operating systems whose user experience descends directly from the UNIX system. These include all the *BSD variants and MacOS, as well as GNU/Linux distributions.
+- <a id="shellinuse"></a>The `SHELL` in use is defined for every reasonable interactive shell. If you use a shell where it is not defined, you definitely know how to fix this instruction by yourself.
