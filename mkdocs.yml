@@ -1,13 +1,16 @@
 site_name: "uvk: Fully-isolated IPython kernel through uv"
 theme: readthedocs
 nav:
-  - On GitHub: https://github.com/hamelin/uvk/
+  - About: about.md
+  - Installation: install.md
   - Tutorials: tutorials/index.md
   - How to?: howto/index.md
-  - Deep dives: deepdives/index.md
+  - Deep dives:
+    - "uv, uvkernel and uvk: which for what?": deepdives/uv-uvkernel-uvk.md
   - Reference:
     - The UVK IPython extension: reference/uvk_ext.md
   - Everything else:
+    - GitHub: https://github.com/hamelin/uvk/
     - License (MIT): license.md
 plugins:
   - mkdocstrings:
