@@ -1,3 +1,9 @@
+<style>
+span.sans {
+  font-family: sans-serif;
+}
+</style>
+
 <div style="display: flex; flex-flow: row nowrap; justify-content: flex-start; align-items: center; gap: 10pt;">
 <div style="flex: 0 1 content; width: 1in;">
   <img src="images/logo.svg"/>
@@ -9,14 +15,14 @@
 
 This tool starts Jupyter IPython kernels ([ipykernel](https://pypi.org/project/ipykernel/))
 in ad hoc isolated environments built on-the-fly very quickly using [uv](https://pypi.org/project/ipykernel/).
-The uvk kernel comes with an IPython extension that provides magics to
+The <span class="sans">uvk</span> kernel comes with an IPython extension that provides magics to
 specify the package dependencies on which the notebook relies.
 These packages are installed in the isolated environment as these magics are
 executed, and the ad hoc virtual environment is discarded when the kernel is shut down.
 
 ## Quickstart
 
-### Step 1: getting UVK kernels
+### Step 1: getting <span class="sans">uvk</span> kernels
 
 The following assume basic familiarity with [uvx](https://docs.astral.sh/uv/concepts/tools/).
 
@@ -60,12 +66,6 @@ uvx uvk --user
 ```
 
 Then just wait for the **uvk (Python 3.xx)** icon to show up on your launcher.
-
-<style>
-span.sans {
-  font-family: sans-serif;
-}
-</style>
 
 ### Step 2: in a notebook with the <span class="sans">uvk</span> kernel, use the <span class="sans">uvk</span> extension to deploy package dependencies
 
