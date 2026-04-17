@@ -113,7 +113,7 @@ umap-learn>=0.5.10
     but building one's own custom environment requires awkward management of
     virtual environments and associated Jupyter kernels.
     <span class=sans>uvk</span> completely mitigates these difficulties.</span>
-    <a href="deepdives/about/#jupyterhub">Read further</a>
+    <a href="about/#custom-user-environments-on-jupyterhub">Read further</a>
   </div>
   <div class="selfcontained">
     In the most general sense, Jupyter notebook are not _self-contained_
@@ -125,13 +125,14 @@ umap-learn>=0.5.10
     as part of the notebook,
     enabling their self-contained executaion on a <span class=sans>uvk</span>
     kernel anywhere else.
-    <a href="deepdives/about/#selfcontained">Read further</a>
+    <a href="about/#self-contained-notebooks">Read further</a>
   </div>
 </div>
 
 ## Going further
 
-- [About <span class="sans">uvk</span>](deepdives/about.md)
+- [About <span class="sans">uvk</span>](about.md)
+- Full [installation](install.md) instructions
 - [Tutorials](tutorials/index.md)
 - [How to?](howto/index.md) recipes and [notebook examples](https://github.com/hamelin/uvk/examples/)
 - [Deep dives](deepdives/index.md) into the details
