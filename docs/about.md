@@ -29,7 +29,7 @@ resulting in surprise breakage when these users start computing.
 In other cases, the default environment cannot be modified,
 but users may then build their own virtual environments and spin off tied Python kernels.
 Managing these environments and their kernels require coordinating two suites of tools and
-artifacts (`python -m venv` and `pip` to manage virtualenvs on the one hand,
+artifacts (`python -m venv` and `pip` to manage environments on the one hand,
 and `jupyter` and `ipykernel install` to manage Jupyter [kernel specs](https://jupyter-client.readthedocs.io/en/5.1.0/kernels.html#kernel-specs)
 on the other hand),
 a task somewhat tedious and awkward.
@@ -41,7 +41,7 @@ as the one named in the notebook does not exist in their own environment.
 The whole user experience is, again, unduly awkward.
 
 <span class="uvk">uvk</span> addresses both aspects of the problem by running
-kernel processes in fully isolated virtualenvs instantiated on the fly,
+kernel processes in fully isolated Python environments instantiated on the fly,
 and managed without user intervention. 
 These virtual environments start out with a bare-bones Python/IPython stack,
 but users can `%uv pip install` any package they require.
@@ -49,7 +49,7 @@ The incumbent Python environment provided through the single-user server spawn r
 The aggressive caching strategies and sheer performance of uv at deploying packages in these
 environments mitigates any presumed inefficiency one may presume from under-the-hood
 repetitive package wrangling.
-The system as a whole works nearly as fast as fixed virtualenvs.
+The system as a whole works nearly as fast as fixed environments.
 
 ## Self-contained notebooks
 
