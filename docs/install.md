@@ -91,7 +91,61 @@ with variations between Windows and UNIX-ish:
 
 The UNIX-ish variant uses the `SHELL` environment variable so as to work regardless of the [shell in use](#shellinuse).
 
-## Installing regular IPython kernel compared to `uvk`
+## Jupyterhub setup
+
+[Jupyterhub](https://jupyter.org/hub) is a common system for sharing a workstation or compute
+cluster by spawning Jupyter Lab instances to multiple users,
+deployed over a authentication and compute orchestration subsystems.
+The <span class="uvk">uvk</span> kernel is particularly useful on such systems to facilitate 
+access to bespoke sets of requirements.
+
+### Install as Jupyterhub administrator
+
+<span class="uvk">uvk</span> provides the greatest benefits when it is made available to the
+Jupyterhub instance out of the box, as part of the environment provided through the Jupyterhub
+install.
+Since the simplest way to install Jupyterhub is through PyPI,
+we demonstrate the installation of <span class="uvk">uvk</span> in the same environment.
+We also assume deployment on a UNIX-ish system.
+Administrators may look up other examples on this page to adapt the instructions.
+
+```sh
+python -m venv ./jupyterhub
+. jupyterhub/bin/activate
+pip install jupyterhub uvk
+uvk --sys-prefix
+```
+
+The Jupyterhub system then includes the <span class="uvk">uvk</span> kernel side by side with the
+default IPython kernel.
+
+### Install as Jupyterhub single-server user
+
+Unless the system is locked down _extremely_ tight,
+one does not strictly require the administrator in order to install and use the
+<span class="uvk">uvk</span> kernel.
+Users may instead create an environment of their own.
+To share the notebooks authored against <span class="uvk">uvk</span>,
+collaborators must be enticed to build an environment such as demonstrated below.
+
+```sh
+python -m venv ./uvk
+. uvk/bin/activate
+pip install uvk
+uvk --user
+```
+
+Remark how the <span class="uvk">uvk</span> kernel installation,
+contrary to most examples on this page,
+carries the `--user` argument.
+This is so the kernel is exposed in the user-specific data directory of the Jupyter system,
+making it visible to the Jupyter launcher even though it was not spawned from the same
+environment as that where the <span class="uvk">uvk</span> package has been deployed.
+After less than 30 seconds after running the commands above,
+the user should see the <span class="uvk">uvk</span> icon appear alongside the other ones that
+already populated the launcher screen.
+
+## Comparing the installation of regular IPython kernel specs to `uvk`
 
 Jupyter instances all come with a pre-deployed IPython kernel,
 named by default **Python 3 (ipykernel)**.
