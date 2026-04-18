@@ -8,6 +8,7 @@ nav:
   - Deep dives:
     - "uv, uvkernel and uvk: which for what?": deepdives/uv-uvkernel-uvk.md
   - Reference:
+    - The uvk command-line tool: reference/uvk_cli.md
     - The uvk IPython extension: reference/uvk_ext.md
   - Everything else:
     - GitHub: https://github.com/hamelin/uvk/
