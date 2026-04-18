@@ -8,7 +8,7 @@ nav:
   - Deep dives:
     - "uv, uvkernel and uvk: which for what?": deepdives/uv-uvkernel-uvk.md
   - Reference:
-    - The UVK IPython extension: reference/uvk_ext.md
+    - The uvk IPython extension: reference/uvk_ext.md
   - Everything else:
     - GitHub: https://github.com/hamelin/uvk/
     - License (MIT): license.md
