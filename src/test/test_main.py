@@ -51,12 +51,8 @@ def ns(
         (ns(user=False, prefix=Path(sys.prefix)), ["--sys-prefix"]),
         (ns(env=[("heyhey", "hoho")]), ["--env", "heyhey", "hoho"]),
         (
-            ns(env=[("TMPDIR", str(Path.home() / "tmp"))]),
-            ["--tmp", str(Path.home() / "tmp")],
-        ),
-        (
-            ns(env=[("asdf", "qwer"), ("TMPDIR", "heyhey"), ("zxcv", "hoho")]),
-            ["--env", "asdf", "qwer", "--tmp", "heyhey", "--env", "zxcv", "hoho"],
+            ns(env=[("asdf", "qwer"), ("zxcv", "hoho")]),
+            ["--env", "asdf", "qwer", "--env", "zxcv", "hoho"],
         ),
         (
             ns(display_name="nomnom", user=True, prefix=Path("foo/bar")),
@@ -84,7 +80,7 @@ def test_parse_args(expected: ParametersInstall, args: list[str]) -> None:
     "display_name,env,python",
     [
         ("Test UVK", [], None),
-        ("UVK test hey", [("TMPDIR", "/disk/alt/tmp")], None),
+        ("UVK test hey", [("ANYWIDGET_HMR", "1")], None),
         ("Test UVK", [], "3.12"),
         ("Test UVK", [], sys.executable),
     ],

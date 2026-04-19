@@ -1,4 +1,4 @@
-from argparse import Action, ArgumentParser, Namespace
+from argparse import ArgumentParser
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
@@ -30,25 +30,6 @@ def display_name_default() -> str:
     return f"UVK (Python {sys.version_info.major}.{sys.version_info.minor})"
 
 
-class DefineTMPDIR(Action):
-    def __init__(self, option_strings, dest, nargs=None, **kwargs) -> None:
-        if nargs is not None:
-            raise ValueError("nargs not allowed")
-        super().__init__(option_strings, dest, **kwargs)
-
-    def __call__(
-        self,
-        parser: ArgumentParser,
-        namespace: Namespace,
-        values: str | Sequence | None,
-        option_string: str | None = None,
-    ) -> None:
-        assert isinstance(values, str)
-        if not namespace.env:
-            namespace.env = []
-        namespace.env.append(["TMPDIR", values])
-
-
 class ParametersInstall(Protocol):
     @property
     def name(self) -> str: ...
@@ -70,10 +51,6 @@ class ParametersInstall(Protocol):
 
     @property
     def python(self) -> str | None: ...
-
-
-# def dir_data_default() -> Path:
-#     return Path(sys.prefix) / "share" / "jupyter"
 
 
 def parse_args(args: list[str] | None = None) -> ParametersInstall:
@@ -125,12 +102,6 @@ def parse_args(args: list[str] | None = None) -> ParametersInstall:
         nargs=2,
         metavar="VARIABLE VALUE",
         help="Define the given environment variable as the kernel is started.",
-    )
-    parser.add_argument(
-        "--tmp",
-        dest="env",
-        action=DefineTMPDIR,
-        help=("Set the temporary directory where the kernel's environment will be instantiated."),
     )
     parser.add_argument(
         "-q",
