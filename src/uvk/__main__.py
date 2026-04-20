@@ -13,17 +13,10 @@ from tempfile import TemporaryDirectory
 from typing import Protocol
 
 from . import resources
+from .util import get_uv_permanent
 
 LOG = lg.getLogger("uvk")
 Env = Sequence[tuple[str, str]]
-
-
-try:
-    PATH_UV = Path(shutil.which("uv"))  # type: ignore
-except TypeError:
-    raise OSError(
-        "Cannot find the uv executable in the current environment; consider reinstalling uvk."
-    )
 
 
 def display_name_default() -> str:
@@ -152,11 +145,12 @@ def prepare_kernelspec(
             ):
                 shutil.copyfileobj(src, dest)
 
+        LOG.debug(f"Using uv at {get_uv_permanent()}")
         with (dir_kernel / "kernel.json").open(mode="w", encoding="utf-8") as file:
             file.write(
                 KernelSpec(
                     argv=[
-                        str(PATH_UV),
+                        get_uv_permanent(),
                         "run",
                         "--with",
                         "uvk",
@@ -182,7 +176,7 @@ def prepare_kernelspec(
 def main():
     lg.basicConfig(level=lg.INFO, format="%(message)s")
     params = parse_args()
-    lg.getLogger().setLevel(
+    LOG.setLevel(
         defaultdict(lambda: lg.CRITICAL, {-1: lg.DEBUG, 0: lg.INFO, 1: lg.WARN, 2: lg.ERROR})[
             params.quiet
         ]

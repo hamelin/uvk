@@ -1,10 +1,32 @@
 from collections.abc import Iterable
 import pytest
 import shlex
+import subprocess as sp
 from uv import find_uv_bin
 import sys
 
 import uvk.util
+
+
+def test_uv_permanent_trivial():
+    assert uvk.util.get_uv_permanent() == find_uv_bin()
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ("run", "--isolated", "--with-editable", ".", "python", "-c"),
+        ("tool", "run", "--with-editable", ".", "ipython", "-c"),
+    ],
+)
+def test_uv_permanent_uv_run_isolated(args: tuple[str]) -> None:
+    cp = sp.run(
+        [find_uv_bin(), *args, "import uvk.util; print(uvk.util.get_uv_permanent())"],
+        capture_output=True,
+        encoding="utf-8",
+    )
+    cp.check_returncode()
+    assert cp.stdout.strip() == find_uv_bin()
 
 
 @pytest.mark.parametrize(

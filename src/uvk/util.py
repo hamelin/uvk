@@ -1,5 +1,8 @@
 from collections.abc import Iterable
+from dataclasses import dataclass
 import re
+from pathlib import Path
+from psutil import Process
 import subprocess as sp
 import sys
 from uv import find_uv_bin
@@ -54,13 +57,51 @@ _REQUIRES_FLAG_ACTIVE = {
 _UV_HELP = {}
 
 
+@dataclass
+class _DirCacheUv:
+    dir: Path | None = None
+
+    def __call__(self) -> Path:
+        if self.dir is None:
+            cp = sp.run(
+                [find_uv_bin(), "cache", "dir"],
+                stdout=sp.PIPE,
+                stderr=sp.STDOUT,
+                stdin=sp.DEVNULL,
+                encoding="utf-8",
+            )
+            cp.check_returncode()
+            self.dir = Path(cp.stdout.strip())
+        return self.dir
+
+
+dir_cache_uv = _DirCacheUv()
+
+
+def get_uv_permanent() -> str:
+    uv_bin = find_uv_bin()
+    if Path(uv_bin).is_relative_to(dir_cache_uv()):
+        # If uv lives under its own cache directory, we must assume it has been set up there
+        # by some other running uv. Let's walk up the parent chain to find it.
+        process = Process().parent()
+        while process is not None:
+            exe = process.exe()
+            if re.search(r"[/\\]uv(\.exe)?$", exe.lower()):
+                if Path(exe).is_relative_to(dir_cache_uv()):
+                    continue
+                return exe
+        raise RuntimeError("Cannot find a permanent uv instance")
+    else:
+        return uv_bin
+
+
 def uv_(command: Iterable[str], project: Iterable[str] = []) -> tuple[str, ...]:
     assert not isinstance(command, str)
     command_full = tuple(command)
     if not command_full:
-        return (find_uv_bin(),)
+        return (get_uv_permanent(),)
     verb, *tail = command_full
-    head = [find_uv_bin(), verb]
+    head = [get_uv_permanent(), verb]
     if verb not in _VERBS_WITH_AUXILIARIES:
         look_up_auxiliaries(verb)
         assert verb in _VERBS_WITH_AUXILIARIES
@@ -92,7 +133,7 @@ def look_up_active_flag(verb: str) -> None:
 def uv_help(verb: str) -> str:
     if verb not in _UV_HELP:
         cp = sp.run(
-            [find_uv_bin(), verb, "--help"],
+            [get_uv_permanent(), verb, "--help"],
             stdin=sp.DEVNULL,
             stdout=sp.PIPE,
             stderr=sp.STDOUT,

@@ -1,11 +1,14 @@
 from argparse import Namespace
 from collections.abc import Iterator
+import json
 from jupyter_client.kernelspec import KernelSpec, KernelSpecManager
 import os
 from pathlib import Path
 import pytest  # noqa
+import subprocess as sp
 import sys
 from uuid import uuid4
+from uv import find_uv_bin
 
 from uvk.__main__ import (
     display_name_default,
@@ -13,8 +16,8 @@ from uvk.__main__ import (
     ParametersInstall,
     prepare_kernelspec,
     parse_args,
-    PATH_UV,
 )
+from uvk.util import dir_cache_uv, get_uv_permanent
 
 
 def ns(
@@ -100,7 +103,7 @@ def test_prepare_kernelspec(
         assert (dir_kernel / "kernel.json").is_file()
         kernelspec = KernelSpec.from_resource_dir(str(dir_kernel))
         assert len(kernelspec.argv) >= 4
-        assert kernelspec.argv[0] == str(PATH_UV)
+        assert kernelspec.argv[0] == get_uv_permanent()
         assert kernelspec.display_name == display_name
         assert kernelspec.env == dict(env or {})
 
@@ -166,3 +169,29 @@ def test_clobber_existing_kernelspec(installed_kernel: str, prefix_install: str)
     assert installed_kernel in KernelSpecManager().get_all_specs()
     install_kernelspec(installed_kernel, prefix_install, display_name="ALT")
     assert KernelSpecManager().get_all_specs()[installed_kernel]["spec"]["display_name"] == "ALT"
+
+
+def test_uvx_uvk(tmp_path: Path) -> None:
+    dir_env = tmp_path / "myenv"
+    sp.run([find_uv_bin(), "venv", str(dir_env)]).check_returncode()
+    sp.run(
+        [
+            find_uv_bin(),
+            "tool",
+            "run",
+            "--isolated",
+            "--with-editable",
+            ".",
+            "uvk",
+            "--prefix",
+            dir_env,
+            "--debug",
+        ]
+    )
+    dir_kernel = dir_env / "share" / "jupyter" / "kernels" / "uvk"
+    assert dir_kernel.is_dir()
+    kernel_json = dir_kernel / "kernel.json"
+    assert kernel_json.is_file()
+    kernel = json.loads(kernel_json.read_text("utf-8"))
+    assert "argv" in kernel
+    assert not Path(kernel["argv"][0]).is_relative_to(dir_cache_uv())
