@@ -31,7 +31,7 @@ First off, deploy the <span class="sans">uvk</span> kernel where Jupyter can see
 | Operating system                      | Quickstart command |
 |:--------------------------------------|:-------------------|
 | Microsoft Windows                     | `uvx --from=jupyterlab --with=uvk cmd /c "uvk --sys-prefix && jupyter lab"` |
-| MacOS, GNU/Linux,<br>\*BSD, UNIX etc. | `uvx --from=jupyterlab --with=uvk $SHELL -c "uvk --sys-prefix && jupyter lab"` |`
+| MacOS, GNU/Linux,<br>\*BSD, UNIX etc. | `uvx --from=jupyterlab --with=uvk $SHELL -c "uvk --sys-prefix && jupyter lab"` |
 
 Now run through the [tutorial notebook](Tutorial.ipynb) to see what this kernel can do for you.
 
