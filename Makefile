@@ -32,7 +32,7 @@ sync/%:
 .SECONDARY:
 
 jupyterlab:
-	uv run uvk --name uvk-test --display-name "UVK TEST" --sys-prefix $(UVK_ARGS)
+	uv run uvk --name uvk --display-name "uvk Python $(shell uv run python -c "import sys; print(f'3.{sys.version_info.minor}')")" --sys-prefix $(UVK_ARGS)
 	uv run --group proto jupyter lab --no-browser
 
 ipython:

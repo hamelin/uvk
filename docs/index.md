@@ -133,7 +133,7 @@ umap-learn>=0.5.10
 
 - [About <span class="sans">uvk</span>](about.md)
 - Full [installation](install.md) instructions
-- [Tutorials](tutorials/index.md)
+- [Tutorial](Tutorial.ipynb)
 - [How to?](howto/index.md) recipes and [notebook examples](https://github.com/hamelin/uvk/examples/)
 - [Deep dives](deepdives/index.md) into the details
 - [Tool and API reference](reference/index.md)

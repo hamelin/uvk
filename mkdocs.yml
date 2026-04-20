@@ -3,7 +3,7 @@ theme: readthedocs
 nav:
   - About: about.md
   - Installation: install.md
-  - Tutorials: tutorials/index.md
+  - Tutorial: Tutorial.ipynb
   - How to?: howto/index.md
   - Deep dives:
     - "uv, uvkernel and uvk: which for what?": deepdives/uv-uvkernel-uvk.md
@@ -14,6 +14,9 @@ nav:
     - GitHub: https://github.com/hamelin/uvk/
     - License (MIT): license.md
 plugins:
+  - mkdocs-jupyter:
+      ignore_h1_titles: true
+      execute: false
   - mkdocstrings:
       handlers:
         python:

@@ -22,6 +22,7 @@ requires-python = ">=3.11"
 dependencies = [
     "ipykernel>=7.0.0",
     "jupyter-core>=5.9.1",
+    "mkdocs-jupyter[docs]>=0.26.3",
     "packaging>=26.0",
     "uv>=0.10.2",
 ]
