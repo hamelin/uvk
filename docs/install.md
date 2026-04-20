@@ -74,22 +74,52 @@ jupyter lab
 
 You should then expect to see a browser window or tab open with a screen similar to [above](#screenshot-jupyterlab).
 
-### Using uv
+### Using `uv tool install`
 
-Since we are starting our own Jupyter instance,
-the _proper_ way of doing so is by running it as a [tool](https://docs.astral.sh/uv/concepts/tools/),
-using `uv tool run` or its shorthand, `uvx`.
-A few awkward details come up, however,
-because we must compose the launch of `uvk` and the Jupyter instance.
-The following command does the trick,
-with variations between Windows and UNIX-ish:
+The most elegant installation approach for uv users is [`uv tool install`](https://docs.astral.sh/uv/concepts/tools/#the-uv-tool-interface),
+putting <span class="uvk">uvk</span> in the same [tool environment](https://docs.astral.sh/uv/concepts/tools/#tool-environments)
+as the complete suite of common Jupyter and IPython tools.
+Run the following:
 
-| OS        | Running <span class="uvk">uvk</span> then Jupyter Lab through uv               |
-|:----------|:-------------------------------------------------------------------------------|
-| Windows   | `uvx --from=jupyterlab --with=uvk cmd /c "uvk --sys-prefix && jupyter lab"`    |
-| UNIX-ish  | `uvx --from=jupyterlab --with=uvk $SHELL -c "uvk --sys-prefix && jupyter lab"` |
+```sh
+uv tool install jupyter-core --with=jupyter --with-executables-from=uvk --with-executables-from=ipython
+```
 
-The UNIX-ish variant uses the `SHELL` environment variable so as to work regardless of the [shell in use](#shellinuse).
+Now your shell [has](#uv-tool-update-shell) the `uvk` executable,
+which sees itself as part of the same tool environment as the Jupyter tools.
+Thus, now run
+
+```sh
+uvk --sys-prefix
+```
+
+to install the <span class="uvk">uvk</span> kernel.
+Now just run
+
+```sh
+jupyter lab
+```
+
+to enjoy the kernel from everywhere the `jupyter` executable is not locally clobbered.
+
+
+### Using `uvx`, in the user's Jupyter data directory
+
+`uvx`, short for `uv tool run`,
+puts together a temporary environment to install a tool's package and run it.
+Thus, using `uvx` to run `uvk` only makes sense to put up the kernel in a permanent
+Jupyter data directory,
+such as the user's own.
+The invocation
+
+```sh
+uvx uvk --user
+```
+
+does precisely that.
+To instead run a IPython or Jupyter instance in the temporary environment created by `uvx`,
+and take advantage of the <span class="uvk">uvk</span> kernel there,
+use the [quickstart](index.md#quickstart) recipe.
 
 ## Jupyterhub setup
 

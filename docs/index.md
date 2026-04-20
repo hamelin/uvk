@@ -22,69 +22,18 @@ executed, and the ad hoc virtual environment is discarded when the kernel is shu
 
 ## Quickstart
 
-### Step 1: getting <span class="sans">uvk</span> kernels
+Let's assume you run a Jupyter Lab or Notebook instance is from your own computer;
+[see here](install.md#jupyterhub-setup) for using <span class="sans">uvk</span> on
+Jupyterhub.
+First off, deploy the <span class="sans">uvk</span> kernel where Jupyter can see it.
+*(Wait, what's [uvx](https://docs.astral.sh/uv/concepts/tools/)?)*
 
-The following assume basic familiarity with [uvx](https://docs.astral.sh/uv/concepts/tools/).
+| Operating system                      | Quickstart command |
+|:--------------------------------------|:-------------------|
+| Microsoft Windows                     | `uvx --from=jupyterlab --with=uvk cmd /c "uvk --sys-prefix && jupyter lab"` |
+| MacOS, GNU/Linux,<br>\*BSD, UNIX etc. | `uvx --from=jupyterlab --with=uvk $SHELL -c "uvk --sys-prefix && jupyter lab"` |`
 
-**On one's own computer, in a terminal**
-
-<style>
-  div.grid-commands {
-    display: grid;
-    grid-template: [unixish] "." 1fr [windows] "." 1fr / [platform] auto [command] 1fr;
-    column-gap: 5mm;
-    margin-bottom: 1.2em;
-  }
-  .grid-commands .unixish {
-    grid-row: unixish / span 1;
-  }
-  .grid-commands .windows {
-    grid-row: windows / span 1;
-  }
-  .grid-columns .platform {
-    grid-column: platform / span 1;
-  }
-  .grid-columns .command {
-    grid-column: 3 / span 1;
-  }
-</style>
-<div class="grid-commands">
-  <div class="unixish platform">UNIX-ish</div>
-  <div class="unixish command">
-    <code>uvx --from=jupyterlab --with=uvk $SHELL -c "uvk --sys-prefix && jupyter lab"</code>
-  </div>
-  <div class="windows platform">Windows</div>
-  <div class="windows command">
-    <code>uvx --from=jupyterlab --with=uvk cmd /c "uvk --sys-prefix && jupyter lab"</code>
-  </div>
-</div>
-
-**On a Jupyterhub single-user server**
-
-```sh
-uvx uvk --user
-```
-
-Then just wait for the **uvk (Python 3.xx)** icon to show up on your launcher.
-
-### Step 2: in a notebook with the <span class="sans">uvk</span> kernel, use the <span class="sans">uvk</span> extension to deploy package dependencies
-
-Run a pair of cells to assert the Python interpreter version and packages you need.
-
-```ipython
-%load_ext uvk
-%python_version >=3.13
-```
-
-```ipython
-%%dependencies
-duckdb
-ipywidgets
-matplotlib
-scikit-learn>=1.8
-toponymy
-umap-learn>=0.5.10
-```
+Now run through the [tutorial notebook](Tutorial.ipynb) to see what this kernel can do for you.
 
 ## Why use this?
 
