@@ -27,7 +27,7 @@ except TypeError:
 
 
 def display_name_default() -> str:
-    return f"UVK (Python {sys.version_info.major}.{sys.version_info.minor})"
+    return f"Python {sys.version_info.major}.{sys.version_info.minor} (uvk)"
 
 
 class ParametersInstall(Protocol):
@@ -56,7 +56,7 @@ class ParametersInstall(Protocol):
 def parse_args(args: list[str] | None = None) -> ParametersInstall:
     parser = ArgumentParser(
         description=(
-            "Deploys the UVK kernel. By default, the kernel is installed in the system "
+            "Installs the uvk kernel. By default, the kernel is installed in the system "
             "space, and an error is raised if the current user does not have the right "
             "to write in system directories. Various options can change this behavior."
         ),

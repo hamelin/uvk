@@ -27,7 +27,7 @@ def kernelspec() -> Iterator[str]:
     """
     mgr = KernelSpecManager()
     name = f"uvk-{uuid4()}"
-    with prepare_kernelspec(name, "UVK unit test") as dir_kernelspec:
+    with prepare_kernelspec(name, "uvk unit test") as dir_kernelspec:
         d = mgr.install_kernel_spec(str(dir_kernelspec), name, prefix=sys.prefix)
 
     yield name
@@ -45,7 +45,7 @@ class KernelManagerAndClient:
 @pytest.fixture(scope="session")
 def kernel(kernelspec: str) -> Iterator[KernelManagerAndClient]:
     """\
-    Sets up the kernel manager and client that gets reused for UVK kernel tests. A previous simpler
+    Sets up the kernel manager and client that gets reused for uvk kernel tests. A previous simpler
     implementation had this fixture regularly-scoped, creating a whole new kernel for every test.
     However, Jupyter kernel managers truly expect to run only once in their process' life cycle,
     deferring the clean-up of various resources to a `atexit` handler. That implementation would

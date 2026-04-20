@@ -1,4 +1,10 @@
-# The UVK IPython extension
+<style>
+    span.uvk {
+        font-family: sans-serif;
+    }
+</style>
+
+# The <span class="uvk">uvk</span> IPython extension
 
 ::: uvk
     options:

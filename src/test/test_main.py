@@ -79,10 +79,10 @@ def test_parse_args(expected: ParametersInstall, args: list[str]) -> None:
 @pytest.mark.parametrize(
     "display_name,env,python",
     [
-        ("Test UVK", [], None),
-        ("UVK test hey", [("ANYWIDGET_HMR", "1")], None),
-        ("Test UVK", [], "3.12"),
-        ("Test UVK", [], sys.executable),
+        ("Test uvk", [], None),
+        ("uvk test hey", [("ANYWIDGET_HMR", "1")], None),
+        ("Test uvk", [], "3.12"),
+        ("Test uvk", [], sys.executable),
     ],
 )
 def test_prepare_kernelspec(
@@ -138,7 +138,7 @@ def test_path_tmp_jupyter(path_tmp_jupyter: Path) -> None:
     assert str(path_tmp_jupyter / "kernels") in mgr.kernel_dirs
 
 
-def install_kernelspec(name: str, prefix: str, display_name: str = "UVK unit test") -> None:
+def install_kernelspec(name: str, prefix: str, display_name: str = "uvk unit test") -> None:
     with prepare_kernelspec(name, display_name=display_name) as dir:
         KernelSpecManager().install_kernel_spec(str(dir), name, prefix=prefix)
 
@@ -159,7 +159,7 @@ def test_install_kernelspec(installed_kernel: str) -> None:
     mgr = KernelSpecManager()
     specs = mgr.get_all_specs()
     assert installed_kernel in mgr.get_all_specs()
-    assert specs[installed_kernel]["spec"]["display_name"] == "UVK unit test"
+    assert specs[installed_kernel]["spec"]["display_name"] == "uvk unit test"
 
 
 def test_clobber_existing_kernelspec(installed_kernel: str, prefix_install: str) -> None:
