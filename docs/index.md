@@ -108,7 +108,7 @@ umap-learn>=0.5.10
 </style>
 <div class="twocol">
   <div class="jupyterhub">
-    Shared workstations fronted with [Jupyterhub](https://jupyter.org/hub)
+    Shared workstations fronted with <a href="https://jupyter.org/hub">Jupyterhub</a>
     will provide some reasonable base computing environment,
     but building one's own custom environment requires awkward management of
     virtual environments and associated Jupyter kernels.
@@ -116,14 +116,14 @@ umap-learn>=0.5.10
     <a href="about/#custom-user-environments-on-jupyterhub">Read further</a>
   </div>
   <div class="selfcontained">
-    In the most general sense, Jupyter notebook are not _self-contained_
+    In the most general sense, Jupyter notebook are not <em>self-contained</em>
     computing artifacts.
     Sharing notebooks require adding them to a group of metadata files that
     facilitate recreating the computing environment they can run in
-    (e.g. <samp>requirements.txt</samp>, <samp>pyproject.toml</samp>, etc.).
-    <span class=sans>uvk</span> provide elegant means to embed this metadata
+    (such as <samp>requirements.txt</samp>).
+    <span class=sans>uvk</span> provides elegant means to embed this metadata
     as part of the notebook,
-    enabling their self-contained executaion on a <span class=sans>uvk</span>
+    enabling their self-contained execution on a <span class=sans>uvk</span>
     kernel anywhere else.
     <a href="about/#self-contained-notebooks">Read further</a>
   </div>
