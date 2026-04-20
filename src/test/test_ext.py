@@ -375,7 +375,12 @@ def test_restore_uv_magick(client_uvk: BlockingKernelClient) -> None:
     check_suffix_uv_interromark(client_uvk, "IPython/core/magics/packaging.py")
 
 
-def make_project(home: Path) -> None:
+@pytest.fixture
+def key_dep() -> str:
+    return "lark"
+
+
+def make_project(home: Path, key_dep: str) -> None:
     sp.run(
         [
             find_uv_bin(),
@@ -397,13 +402,15 @@ def make_project(home: Path) -> None:
             str(home),
         ],
     ).check_returncode()
-    sp.run([find_uv_bin(), "add", "--project", str(home), "requests"]).check_returncode()
-    sp.run([find_uv_bin(), "version", "--project", str(home), "0.0.2"]).check_returncode()
+    sp.run([find_uv_bin(), "add", "--project", str(home), key_dep], cwd=home).check_returncode()
+    sp.run(
+        [find_uv_bin(), "version", "--project", str(home), "0.0.2"], cwd=home
+    ).check_returncode()
 
 
 @pytest.fixture
-def project_haha(tmp_path: Path) -> Path:
-    make_project(tmp_path / "haha")
+def project_haha(tmp_path: Path, key_dep: str) -> Path:
+    make_project(tmp_path / "haha", key_dep=key_dep)
     return tmp_path / "haha"
 
 
@@ -414,32 +421,42 @@ def import_before_after_project(
     name_import: str,
 ) -> Iterator[None]:
     r, _ = execute(client_uvk, f"import {name_import}\n")
-    assert r.get("content", {}).get("status", "") == "error"
+    assert r.get("content", {}).get("status", "") == "error", (
+        f"Package {name_import} already importable before running %project"
+    )
     r, _ = execute(client_uvk, f"%project {project}\n")
     assert r.get("content", {}).get("status", "") == "ok"
     yield None
     r, _ = execute(client_uvk, f"import {name_import}\n")
-    assert r.get("content", {}).get("status", "") == "ok"
+    assert r.get("content", {}).get("status", "") == "ok", (
+        f"Package {name_import} NOT importable after running %project"
+    )
 
 
-def test_project_haha(client_uvk: BlockingKernelClient, project_haha: Path) -> None:
-    with import_before_after_project(client_uvk, project_haha, "requests"):
+def test_project_haha(client_uvk: BlockingKernelClient, project_haha: Path, key_dep: str) -> None:
+    with import_before_after_project(client_uvk, project_haha, key_dep):
         pass
 
 
-def test_project_add_dependency(client_uvk: BlockingKernelClient, project_haha: Path) -> None:
+def test_project_add_dependency(
+    client_uvk: BlockingKernelClient, project_haha: Path, key_dep: str
+) -> None:
     with import_before_after_project(client_uvk, project_haha, "xonsh"):
         r, _ = execute(client_uvk, "%uv add xonsh\n")
         assert r.get("content", {}).get("status", "") == "ok"
         with (project_haha / "pyproject.toml").open(mode="rb") as file:
             pyproject = tomllib.load(file)
             dependencies = pyproject.get("project", {}).get("dependencies", [])
-            for name in ["requests", "xonsh"]:
-                assert any(dep.startswith(name) for dep in dependencies)
+            for name in [key_dep, "xonsh"]:
+                assert any(dep.startswith(name) for dep in dependencies), (
+                    f"Can't find a dependency for package {name}"
+                )
 
 
 def test_project_add_remove_breaks_stuff(
-    client_uvk: BlockingKernelClient, project_haha: Path
+    client_uvk: BlockingKernelClient,
+    project_haha: Path,
+    key_dep: str,
 ) -> None:
     r, output = execute(
         client_uvk,
@@ -463,7 +480,7 @@ def test_project_add_remove_breaks_stuff(
     assert r.get("content", {}).get("status", "") == "ok"
     r, _ = execute(client_uvk, "%uv add aiohttp pandas")
     assert r.get("content", {}).get("status", "") == "ok"
-    r, _ = execute(client_uvk, "%uv remove requests\n")
+    r, _ = execute(client_uvk, f"%uv remove {key_dep}\n")
     assert r.get("content", {}).get("status", "") == "ok"
     r, output = execute(client_uvk, "print(uv.find_uv_bin())")
     content = r.get("content", {})
@@ -486,7 +503,11 @@ def test_project_import_package(client_uvk: BlockingKernelClient, project_haha: 
     assert "Hello from haha!" == "\n".join(output["stdout"]).strip()
 
 
-def test_project_immutable_once_set(client_uvk: BlockingKernelClient, project_haha: Path) -> None:
-    with import_before_after_project(client_uvk, project_haha, "requests"):
+def test_project_immutable_once_set(
+    client_uvk: BlockingKernelClient,
+    project_haha: Path,
+    key_dep: str,
+) -> None:
+    with import_before_after_project(client_uvk, project_haha, key_dep):
         r, _ = execute(client_uvk, "%project\n")
         assert r.get("content", {}).get("status", "") == "error"
