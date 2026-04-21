@@ -78,58 +78,38 @@ You should then expect to see a browser window or tab open with a screen similar
 
 The most elegant installation approach for uv users is [`uv tool install`](https://docs.astral.sh/uv/concepts/tools/#the-uv-tool-interface),
 putting <span class="uvk">uvk</span> in the same [tool environment](https://docs.astral.sh/uv/concepts/tools/#tool-environments)
-as the complete suite of common Jupyter and IPython tools.
+as the complete suite of common Jupyter tools.
 Run the following:
 
 ```sh
-uv tool install jupyter-core --with=jupyter --with-executables-from=uvk --with-executables-from=ipython
+uv tool install jupyter-core --with=jupyter --with-executables-from=uvk
 ```
 
 Now your shell [has](#uv-tool-update-shell) the `uvk` executable,
 which sees itself as part of the same tool environment as the Jupyter tools.
-Thus, now run
+Now run
 
 ```sh
 uvk --sys-prefix
 ```
 
 to install the <span class="uvk">uvk</span> kernel.
-Now just run
+Running Jupyter
 
 ```sh
 jupyter lab
 ```
 
-to enjoy the kernel from everywhere the `jupyter` executable is not locally clobbered.
+is all it takes now to enjoy the kernel from everywhere the `jupyter` executable is not
+clobbered.
 
-
-### Using `uvx`, in the user's Jupyter data directory
-
-`uvx`, short for `uv tool run`,
-puts together a temporary environment to install a tool's package and run it.
-Thus, using `uvx` to run `uvk` only makes sense to put up the kernel in a permanent
-Jupyter data directory,
-such as the user's own.
-The invocation
-
-```sh
-uvx uvk --user
-```
-
-does precisely that.
-To instead run a IPython or Jupyter instance in the temporary environment created by `uvx`,
-and take advantage of the <span class="uvk">uvk</span> kernel there,
-use the [quickstart](index.md#quickstart) recipe.
-
-## Jupyterhub setup
+## Jupyterhub setup as administrator
 
 [Jupyterhub](https://jupyter.org/hub) is a common system for sharing a workstation or compute
 cluster by spawning Jupyter Lab instances to multiple users,
 deployed over a authentication and compute orchestration subsystems.
 The <span class="uvk">uvk</span> kernel is particularly useful on such systems to facilitate 
 access to bespoke sets of requirements.
-
-### Install as Jupyterhub administrator
 
 <span class="uvk">uvk</span> provides the greatest benefits when it is made available to the
 Jupyterhub instance out of the box, as part of the environment provided through the Jupyterhub
@@ -149,31 +129,41 @@ uvk --sys-prefix
 The Jupyterhub system then includes the <span class="uvk">uvk</span> kernel side by side with the
 default IPython kernel.
 
-### Install as Jupyterhub single-server user
+## _User_ <span class="uvk">uvk</span> kernel showing up in any Jupyter instance
 
-Unless the system is locked down _extremely_ tight,
-one does not strictly require the administrator in order to install and use the
-<span class="uvk">uvk</span> kernel.
-Users may instead create an environment of their own.
-To share the notebooks authored against <span class="uvk">uvk</span>,
-collaborators must be enticed to build an environment such as demonstrated below.
+The <span class="uvk">uvk</span> kernel can be installed in the _user_ data directory that
+Jupyter looks up when searching for kernel specs.
+That way, the kernel shows up in every Jupyter Lab or Notebook instance one runs,
+including on Jupyterhub.
+**This is how a Jupyterhub user can install <span class="uvk">uvk</span> for themselves,
+without administrator intervention.**
+
+If **uv** is available,
 
 ```sh
-python -m venv ./uvk
-. uvk/bin/activate
-pip install uvk
-uvk --user
+uvx uvk --user
 ```
 
-Remark how the <span class="uvk">uvk</span> kernel installation,
-contrary to most examples on this page,
-carries the `--user` argument.
-This is so the kernel is exposed in the user-specific data directory of the Jupyter system,
-making it visible to the Jupyter launcher even though it was not spawned from the same
-environment as that where the <span class="uvk">uvk</span> package has been deployed.
-After less than 30 seconds after running the commands above,
-the user should see the <span class="uvk">uvk</span> icon appear alongside the other ones that
-already populated the launcher screen.
+is all that's needed.
+Otherwise, if only Python is present,
+building a permanent virtual environment is necessary.
+
+```sh
+python -m venv .uvk
+. .uvk/bin/activate
+pip install uvk      # Comes with uv!
+uvk --user
+deactivate           # So other env modifications don't modify this one.
+```
+
+The environment activation statement in the snippet above varies depending on one's shell.
+Look up [here](#using-venv-and-pip) if you use neither `bash` nor `zsh`.
+
+If the Jupyter instance where the kernel is expected is already running
+(e.g. as on Jupyterhub),
+the user should see the <span class="uvk">uvk</span> icon appear in the Launcher window
+within about a minute of invoking `uvk --user`.
+Newly started Jupyter instances will have it from the get-go.
 
 ## Comparing the installation of regular IPython kernel specs to `uvk`
 
@@ -197,7 +187,7 @@ uvk --name my_uvk --display-name 'I liuvke this a lot'
 ```
 
 Invoke `uvk --help` for a terse listing of the command line arguments.
-The [full reference](reference/uvk_cli.md) includes some more complex examples.
+The [full reference](reference/uvk_cli.md) includes further examples.
 
 ## Notes
 
