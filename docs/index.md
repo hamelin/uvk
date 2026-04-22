@@ -23,8 +23,8 @@ executed, and the ad hoc virtual environment is discarded when the kernel is shu
 ## Quickstart
 
 Let's assume you run a Jupyter Lab or Notebook instance is from your own computer;
-[see here](install.md#jupyterhub-setup) for using <span class="sans">uvk</span> on
-Jupyterhub.
+[see here](install.md#jupyterhub-setup-as-administrator) for deploying <span class="sans">uvk</span>
+on Jupyterhub.
 First off, deploy the <span class="sans">uvk</span> kernel where Jupyter can see it.
 *(Wait, what's [uvx](https://docs.astral.sh/uv/concepts/tools/)?)*
 
