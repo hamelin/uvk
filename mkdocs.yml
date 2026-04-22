@@ -4,7 +4,9 @@ nav:
   - About: about.md
   - Installation: install.md
   - Tutorial: Tutorial.ipynb
-  - How to?: howto/index.md
+  - How to?:
+    - Author a notebook that is easiest to share: howto/notebook-easiest-to-share.md
+    - uvk kernels for multiple Python versions: howto/uvk-multiple-pythons.md
   - Deep dives:
     - "uv, uvkernel and uvk: which for what?": deepdives/uv-uvkernel-uvk.md
   - Reference:
@@ -13,6 +15,10 @@ nav:
   - Everything else:
     - GitHub: https://github.com/hamelin/uvk/
     - License (MIT): license.md
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: "#"
 plugins:
   - mkdocs-jupyter:
       ignore_h1_titles: true
