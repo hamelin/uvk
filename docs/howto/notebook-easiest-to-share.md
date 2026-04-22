@@ -19,7 +19,7 @@ nor fear that the notebook might affect one's own computing space.
 !!! tip "Summary of best practices"
     1. Have a <span class="uvk">uvk</span> kernel named `uvk`.
     1. Use the [`%require_python`](../reference/uvk_ext.md#uvk.require_python) and [`%%dependencies`](../reference/uvk_ext.md#uvk.dependencies) magics (from the <span class="uvk">uvk</span> IPython extension) to set up the computing environment.
-    1. Document clearly data downloads, where they are stored, and how they can be deleted after the notebook is done.
+    1. Document clearly data downloads and generations, where they are stored, and how they can be deleted after the notebook is done.
 
     Read below for full details.
 
