@@ -193,3 +193,4 @@ The [full reference](reference/uvk_cli.md) includes further examples.
 
 - <a id="unixish"></a>The term UNIX-ish designates here any operating systems whose user experience descends directly from the UNIX system. These include all the *BSD variants and MacOS, as well as GNU/Linux distributions.
 - <a id="shellinuse"></a>The `SHELL` in use is defined for every reasonable interactive shell. If you use a shell where it is not defined, you definitely know how to fix this instruction by yourself.
+- <a id="uv-tool-update-shell"></a>Command `uv tool update-shell` alters one's shell configuration file to ensure the tools installed with `uv tool install` are accessible. It may be a good idea to restart the shell after running it, to actualize the new configuration.
