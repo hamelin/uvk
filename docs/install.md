@@ -33,9 +33,15 @@ Here are instructions for the most common situations:
 |:-----------------------------------|:-----------------------------|:-------------------|
 | Windows                            | Classic command prompt (CMD) | `.\jupyter\Scripts\activate.bat` |
 |                                    | Powershell                   | `.\jupyter\Scripts\Activate.ps1` |
-| [UNIX-ish](#unixish)               | Bash or Zsh                  | `. jupyter/bin/activate` |
+| UNIX-ish                           | Bash or Zsh                  | `. jupyter/bin/activate` |
 |                                    | Fish                         | `source jupyter/bin/activate.fish` |
 |                                    | Nushell                      | `overlay use jupyter/bin/activate.nu` |
+
+!!! note "UNIX-ish (adj.)"
+    Refers to all UNIX-descended or UNIX-imitating operating systems in used commonly to drive
+    modern workstations. Covers GNU/Linux distributions, \*BSD and MacOS &mdash;
+    all tier-1 and tier-2 [uv-supported](https://docs.astral.sh/uv/reference/policies/platforms/)
+    platforms.
 
 Now install Jupyter Lab or Jupyter Notebook and <span class="uvk">uvk</span>.
 and install the <span class="uvk">uvk</span> kernel spec so that Jupyter Lab sees it.
@@ -79,13 +85,23 @@ You should then expect to see a browser window or tab open with a screen similar
 The most elegant installation approach for uv users is [`uv tool install`](https://docs.astral.sh/uv/concepts/tools/#the-uv-tool-interface),
 putting <span class="uvk">uvk</span> in the same [tool environment](https://docs.astral.sh/uv/concepts/tools/#tool-environments)
 as the complete suite of common Jupyter tools.
+
+!!! hint "Enabling one's shell to use uv-installed tools"
+    `uv tool install` adds executables in a directory that must be put in one's `PATH`
+    environment variable in order to call them from one's shell.
+    The easiest way to do this is to run
+
+    `uv tool update-shell`
+
+    and then restart the shell.
+
 Run the following:
 
 ```sh
 uv tool install jupyter-core --with=jupyter --with-executables-from=uvk
 ```
 
-Now your shell [has](#uv-tool-update-shell) the `uvk` executable,
+Now your shell has the `uvk` executable,
 which sees itself as part of the same tool environment as the Jupyter tools.
 Now run
 
@@ -188,9 +204,3 @@ uvk --name my_uvk --display-name 'I liuvke this a lot'
 
 Invoke `uvk --help` for a terse listing of the command line arguments.
 The [full reference](reference/uvk_cli.md) includes further examples.
-
-## Notes
-
-- <a id="unixish"></a>The term UNIX-ish designates here any operating systems whose user experience descends directly from the UNIX system. These include all the *BSD variants and MacOS, as well as GNU/Linux distributions.
-- <a id="shellinuse"></a>The `SHELL` in use is defined for every reasonable interactive shell. If you use a shell where it is not defined, you definitely know how to fix this instruction by yourself.
-- <a id="uv-tool-update-shell"></a>Command `uv tool update-shell` alters one's shell configuration file to ensure the tools installed with `uv tool install` are accessible. It may be a good idea to restart the shell after running it, to actualize the new configuration.
