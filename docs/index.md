@@ -83,9 +83,7 @@ Now run through the [tutorial notebook](Tutorial.ipynb) to see what this kernel 
 - [About <span class="sans">uvk</span>](about.md)
 - Full [installation](install.md) instructions
 - [Tutorial](Tutorial.ipynb)
-- How to? ...
-  - [Author a notebook that is easiest to share](howto/notebook-easiest-to-share.md)
-  - [<span class="uvk">uvk</span> kernels for multiple Python versions](howto/uvk-multiple-pythons.md)
+- [How to?](howto/index.md) guides and recipes
 - [Deep dives](deepdives/index.md) into the details
 - [Tool and API reference](reference/index.md)
 
