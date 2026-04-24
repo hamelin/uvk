@@ -6,7 +6,7 @@ nav:
   - Tutorial: Tutorial.ipynb
   - How to?:
     - Author a notebook that is easiest to share: howto/notebook-easiest-to-share.md
-    - uvk kernels for multiple Python versions: howto/uvk-multiple-pythons.md
+    - uvk kernels for multiple Python interpreters: howto/uvk-multiple-pythons.md
   - Deep dives:
     - "uv, uvkernel and uvk: which for what?": deepdives/uv-uvkernel-uvk.md
   - Reference:

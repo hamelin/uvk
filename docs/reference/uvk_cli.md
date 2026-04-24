@@ -58,6 +58,7 @@ uvk --sys-prefix
 ```
 
 In Jupyterhub systems, even the Jupyter system's environment is not writable by the user.
+<a id="user"></a>
 One may, however, add kernel specs to their specific *user* Jupyter data directory, using
 the `--user` boolean argument.
 
@@ -96,6 +97,7 @@ widgets with [hot module reloading enabled](https://anywidget.dev/blog/anywidget
 uvk --name anywidget_livereload --env ANYWIDGET_HMR 1
 ```
 
+<a id="python-version"></a>
 One of uv's most powerful features is its ability to flip between multiple distinct Python stacks.
 This is highly useful for library developers who attempt to support all of the five
 minor Python versions [in living support](https://devguide.python.org/versions/) at any given moment.
