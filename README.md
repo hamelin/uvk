@@ -1,4 +1,4 @@
-# **uvk** -- Fully isolated IPython kernels through the magic of uv
+# **uvk** &mdash; Fully isolated IPython kernels through the magic of uv
 
 This project uses [uv](https://docs.astral.sh/uv/)'s ultrafast package deployment
 capabilities and on-the-fly isolated environment composition to run the
