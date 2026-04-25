@@ -84,7 +84,7 @@ Now run through the [tutorial notebook](Tutorial.ipynb) to see what this kernel 
 - Full [installation](install.md) instructions
 - [Tutorial](Tutorial.ipynb)
 - [How to?](howto/index.md) guides and recipes
-- [Deep dives](deepdives/index.md) into the details
+  <!-- - [Deep dives](deepdives/index.md) into the details -->
 - [Tool and API reference](reference/index.md)
 
 Copyright 2026 Benoit Hamelin.

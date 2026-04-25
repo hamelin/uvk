@@ -7,8 +7,6 @@ nav:
   - How to?:
     - Author a notebook that is easiest to share: howto/notebook-easiest-to-share.md
     - uvk kernels for multiple Python interpreters: howto/uvk-multiple-pythons.md
-  - Deep dives:
-    - "uv, uvkernel and uvk: which for what?": deepdives/uv-uvkernel-uvk.md
   - Reference:
     - The uvk command-line tool: reference/uvk_cli.md
     - The uvk IPython extension: reference/uvk_ext.md
