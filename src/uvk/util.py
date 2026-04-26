@@ -175,6 +175,7 @@ def log_level(ns: Any) -> int:
 
 __all__ = [
     "add_args_quiet_verbose",
+    "get_uv_permanent",
     "log_level",
     "uv_",
 ]
