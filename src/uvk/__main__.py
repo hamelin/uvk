@@ -42,9 +42,6 @@ class ParametersInstall(Protocol):
     @property
     def quiet(self) -> int: ...
 
-    @property
-    def python(self) -> str | None: ...
-
 
 def parse_args(args: list[str] | None = None) -> ParametersInstall:
     parser = ArgumentParser(
@@ -113,19 +110,6 @@ def parse_args(args: list[str] | None = None) -> ParametersInstall:
         const=-1,
         help="Debug-level output chatter.",
     )
-    parser.add_argument(
-        "-p",
-        "--python",
-        dest="python",
-        default=None,
-        help=(
-            "Set the Python interpreter to use as kernel engine. "
-            "Convention for this parameter mirrors uv's --python option. "
-            "This can be just a Python version number, such as `3.12` or "
-            "`3.13.3`, or the full path to a Python executable, such "
-            f"as {sys.executable}."
-        ),
-    )
     return parser.parse_args(args)
 
 
@@ -134,7 +118,6 @@ def prepare_kernelspec(
     name: str,
     display_name: str,
     env: Env = [],
-    python: str = "",
 ) -> Iterator[Path]:
     with TemporaryDirectory() as dir_:
         dir_kernel = Path(dir_)
@@ -154,7 +137,6 @@ def prepare_kernelspec(
                         "run",
                         "--with",
                         "uvk",
-                        *(["--python", python] if python else []),
                         "--isolated",
                         "python",
                         "-m",
@@ -188,7 +170,6 @@ def main():
             name=params.name,
             display_name=params.display_name,
             env=params.env or [],
-            python=params.python or "",
         ) as dir_ks:
             mgr.install_kernel_spec(
                 str(dir_ks),

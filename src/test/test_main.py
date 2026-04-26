@@ -27,7 +27,6 @@ def ns(
     prefix: Path | None = None,
     env: list[tuple[str, str]] | None = None,
     quiet: int = 0,
-    python: str | None = None,
 ) -> Namespace:
     return Namespace(
         name=name,
@@ -36,7 +35,6 @@ def ns(
         prefix=prefix,
         env=[list(t) for t in env] if env else None,
         quiet=quiet,
-        python=python,
     )
 
 
@@ -70,9 +68,6 @@ def ns(
         ),
         (ns(quiet=1), ["--quiet"]),
         (ns(quiet=4), ["-qqq", "--quiet"]),
-        (ns(python="3.11"), ["-p", "3.11"]),
-        (ns(python="3.13.3"), ["--python", "3.13.3"]),
-        (ns(python=sys.executable), ["-p", sys.executable]),
     ],
 )
 def test_parse_args(expected: ParametersInstall, args: list[str]) -> None:
@@ -80,23 +75,20 @@ def test_parse_args(expected: ParametersInstall, args: list[str]) -> None:
 
 
 @pytest.mark.parametrize(
-    "display_name,env,python",
+    "display_name,env",
     [
-        ("Test uvk", [], None),
-        ("uvk test hey", [("ANYWIDGET_HMR", "1")], None),
-        ("Test uvk", [], "3.12"),
-        ("Test uvk", [], sys.executable),
+        ("Test uvk", []),
+        ("uvk test hey", [("ANYWIDGET_HMR", "1")]),
+        ("Test uvk", []),
+        ("Test uvk", []),
     ],
 )
 def test_prepare_kernelspec(
     tmp_path: Path,
     display_name: str,
     env: Env,
-    python: str | None,
 ) -> None:
-    with prepare_kernelspec(
-        "TEST-uvk-TEST", display_name=display_name, env=env, python=python or ""
-    ) as dir_kernel:
+    with prepare_kernelspec("TEST-uvk-TEST", display_name=display_name, env=env) as dir_kernel:
         for logo in ["logo-32x32.png", "logo-64x64.png", "logo-svg.svg"]:
             assert (dir_kernel / logo).is_file()
 
@@ -106,15 +98,6 @@ def test_prepare_kernelspec(
         assert kernelspec.argv[0] == get_uv_permanent()
         assert kernelspec.display_name == display_name
         assert kernelspec.env == dict(env or {})
-
-        if python:
-            try:
-                i = kernelspec.argv.index("--python")
-                assert kernelspec.argv[i + 1] == python
-            except ValueError:
-                pytest.fail("No --python in kernelspec arguments")
-        else:
-            assert "--python" not in kernelspec.argv
 
 
 @pytest.fixture
