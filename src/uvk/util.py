@@ -1,10 +1,13 @@
+from argparse import ArgumentParser
 from collections.abc import Iterable
 from dataclasses import dataclass
+import logging as lg
 import re
 from pathlib import Path
 from psutil import Process
 import subprocess as sp
 import sys
+from typing import Any
 from uv import find_uv_bin
 
 
@@ -143,4 +146,35 @@ def uv_help(verb: str) -> str:
     return _UV_HELP[verb]
 
 
-__all__ = ["uv_"]
+def add_args_quiet_verbose(parser: ArgumentParser) -> None:
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="count",
+        default=0,
+        help=(
+            "Quiets out the output chatter. Use up to three times to quiet down to "
+            "critical errors."
+        ),
+    )
+    parser.add_argument(
+        "--debug",
+        dest="quiet",
+        action="store_const",
+        const=-1,
+        help="Debug-level output chatter.",
+    )
+
+
+def log_level(ns: Any) -> int:
+    return {-1: lg.DEBUG, 0: lg.INFO, 1: lg.WARN, 2: lg.ERROR}.get(
+        getattr(ns, "quiet", 0),
+        lg.CRITICAL,
+    )
+
+
+__all__ = [
+    "add_args_quiet_verbose",
+    "log_level",
+    "uv_",
+]

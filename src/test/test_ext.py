@@ -15,7 +15,7 @@ import tomllib
 from uuid import uuid4
 from uv import find_uv_bin
 
-from uvk.__main__ import prepare_kernelspec
+from uvk.install import prepare_kernelspec
 
 from . import cook
 

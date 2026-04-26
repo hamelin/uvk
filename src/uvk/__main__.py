@@ -1,188 +1,38 @@
-from argparse import ArgumentParser
-from collections import defaultdict
-from collections.abc import Iterator, Sequence
-from contextlib import contextmanager
-from importlib.resources import files
-from jupyter_client import protocol_version
-from jupyter_client.kernelspec import KernelSpec, KernelSpecManager
+from argparse import ArgumentParser, Namespace
 import logging as lg
-from pathlib import Path
-import shutil
 import sys
-from tempfile import TemporaryDirectory
-from typing import Protocol
 
-from . import resources
-from .util import get_uv_permanent
-
-LOG = lg.getLogger("uvk")
-Env = Sequence[tuple[str, str]]
+from .install import install
+from .launch import launch
 
 
-def display_name_default() -> str:
-    return f"Python {sys.version_info.major}.{sys.version_info.minor} (uvk)"
-
-
-class ParametersInstall(Protocol):
-    @property
-    def name(self) -> str: ...
-
-    @property
-    def display_name(self) -> str: ...
-
-    @property
-    def user(self) -> bool: ...
-
-    @property
-    def prefix(self) -> Path | None: ...
-
-    @property
-    def env(self) -> list[tuple[str, str]] | None: ...
-
-    @property
-    def quiet(self) -> int: ...
-
-
-def parse_args(args: list[str] | None = None) -> ParametersInstall:
-    parser = ArgumentParser(
-        description=(
-            "Installs the uvk kernel. By default, the kernel is installed in the system "
-            "space, and an error is raised if the current user does not have the right "
-            "to write in system directories. Various options can change this behavior."
-        ),
+def parse_args(args: list[str] | None = None) -> Namespace:
+    parser_main = ArgumentParser(
+        description="""
+            uv-driven IPython kernel with environment setup from inline script metadata embedded
+            into notebooks.   
+        """,
     )
-    parser.add_argument(
-        "--name",
-        help="Name of the kernelspec. Default is `uvk`.",
-        default="uvk",
-    )
-    parser.add_argument(
-        "--display-name",
-        help=(
-            "Pretty name for the kernelspec that will show in Jupyter "
-            f"interface. Default is `{display_name_default()}`."
-        ),
-        default=display_name_default(),
-    )
-    parser.add_argument(
-        "--user",
-        default=False,
-        action="store_true",
-        help="Install the kernel in the user's space.",
-    )
-    parser.add_argument(
-        "--prefix",
-        default=None,
-        type=Path,
-        help="Install the kernel in the Python distribution at the given prefix path.",
-    )
-    parser.add_argument(
-        "--sys-prefix",
-        dest="prefix",
-        action="store_const",
-        const=Path(sys.prefix),
-        help=(
-            f"Install the kernel in the current environment; equivalent to --prefix={sys.prefix}."
-        ),
-    )
-    parser.add_argument(
-        "--env",
-        dest="env",
-        action="append",
-        nargs=2,
-        metavar="VARIABLE VALUE",
-        help="Define the given environment variable as the kernel is started.",
-    )
-    parser.add_argument(
-        "-q",
-        "--quiet",
-        action="count",
-        default=0,
-        help=(
-            "Quiets out the output chatter. Use up to three times to quiet down to "
-            "critical errors."
-        ),
-    )
-    parser.add_argument(
-        "--debug",
-        dest="quiet",
-        action="store_const",
-        const=-1,
-        help="Debug-level output chatter.",
-    )
-    return parser.parse_args(args)
-
-
-@contextmanager
-def prepare_kernelspec(
-    name: str,
-    display_name: str,
-    env: Env = [],
-) -> Iterator[Path]:
-    with TemporaryDirectory() as dir_:
-        dir_kernel = Path(dir_)
-        for name_logo in ["logo-32x32.png", "logo-64x64.png", "logo-svg.svg"]:
-            with (
-                (files(resources) / name_logo).open(mode="rb") as src,
-                (dir_kernel / name_logo).open(mode="wb") as dest,
-            ):
-                shutil.copyfileobj(src, dest)
-
-        LOG.debug(f"Using uv at {get_uv_permanent()}")
-        with (dir_kernel / "kernel.json").open(mode="w", encoding="utf-8") as file:
-            file.write(
-                KernelSpec(
-                    argv=[
-                        get_uv_permanent(),
-                        "run",
-                        "--with",
-                        "uvk",
-                        "--isolated",
-                        "python",
-                        "-m",
-                        "ipykernel_launcher",
-                        "-f",
-                        "{connection_file}",
-                    ],
-                    name=name,
-                    display_name=display_name,
-                    env=dict(env or []),
-                    language="python",
-                    metadata={"debugger": True},
-                    kernel_protocol_version=protocol_version,
-                ).to_json()
-            )
-        yield dir_kernel
+    subparsers = parser_main.add_subparsers(title="Commands", dest="command", required=True)
+    for app in [install, launch]:
+        parser_app = subparsers.add_parser(
+            app.__name__,
+            help=app.__doc__,
+            aliases=getattr(app, "aliases", []),
+            deprecated=getattr(app, "deprecated", False),
+        )
+        app(parser_app)
+    return parser_main.parse_args(args)
 
 
 def main():
     lg.basicConfig(level=lg.INFO, format="%(message)s")
-    params = parse_args()
-    LOG.setLevel(
-        defaultdict(lambda: lg.CRITICAL, {-1: lg.DEBUG, 0: lg.INFO, 1: lg.WARN, 2: lg.ERROR})[
-            params.quiet
-        ]
-    )
-
+    ns = parse_args()
     try:
-        mgr = KernelSpecManager()
-        with prepare_kernelspec(
-            name=params.name,
-            display_name=params.display_name,
-            env=params.env or [],
-        ) as dir_ks:
-            mgr.install_kernel_spec(
-                str(dir_ks),
-                params.name,
-                user=params.user,
-                prefix=str(params.prefix) if params.prefix else None,
-            )
-    except (ValueError, OSError) as err:
-        LOG.critical(str(err))
-        sys.exit(1)
-    except Exception as err:
-        LOG.critical(f"{type(err).__name__}: {err}; abort")
-        sys.exit(2)
+        ns._main_(ns)
+    except AttributeError:
+        lg.critical("Argument parsing failure. Abort.")
+        sys.exit(11)
 
 
 if __name__ == "__main__":
