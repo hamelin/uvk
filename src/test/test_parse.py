@@ -2,7 +2,7 @@ import pytest  # noqa
 from typing import Type
 from warnings import catch_warnings
 
-from uvk._parse import (
+from uvk.parse import (
     IllegalLine,
     NoScriptMetadataEndLine,
     NoScriptMetadataStartLine,

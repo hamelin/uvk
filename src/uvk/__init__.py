@@ -24,7 +24,7 @@ from typing import Any, cast, overload, Protocol
 from uv import find_uv_bin
 from warnings import warn
 
-from ._parse import parse_dependencies, parse_script_metadata
+from .parse import parse_dependencies, parse_script_metadata
 from .util import uv_
 
 LOG = lg.getLogger(__name__)
