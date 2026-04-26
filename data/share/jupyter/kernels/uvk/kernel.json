@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "uv",
+    "run",
+    "--with",
+    "uvk",
+    "-m",
+    "uvk",
+    "launch",
+    "-f",
+    "{connection_file}"
+  ],
+  "display_name": "Python 3 (uvk)",
+  "language": "python",
+  "metadata": {
+    "debugger": true
+  },
+  "kernel_protocol_version": "5.5"
+}
