@@ -26,30 +26,11 @@ def display_name_default() -> str:
     return f"Python {sys.version_info.major} (uvk)"
 
 
-# class ParametersInstall(Protocol):
-#     @property
-#     def name(self) -> str: ...
-
-#     @property
-#     def display_name(self) -> str: ...
-
-#     @property
-#     def user(self) -> bool: ...
-
-#     @property
-#     def prefix(self) -> Path | None: ...
-
-#     @property
-#     def env(self) -> list[tuple[str, str]] | None: ...
-
-#     @property
-#     def quiet(self) -> int: ...
-
-
 @contextmanager
 def prepare_kernelspec(
     name: str,
     display_name: str,
+    dev_path: str = "",
     env: Env = [],
 ) -> Iterator[Path]:
     with TemporaryDirectory() as dir_:
@@ -68,12 +49,11 @@ def prepare_kernelspec(
                     argv=[
                         get_uv_permanent(),
                         "run",
-                        "--with",
-                        "uvk",
+                        *(["--with-editable", dev_path] if dev_path else ["--with", "uvk"]),
+                        "--no-project",
                         "--isolated",
-                        "python",
-                        "-m",
-                        "ipykernel_launcher",
+                        "uvk",
+                        "launch",
                         "-f",
                         "{connection_file}",
                     ],
@@ -134,6 +114,13 @@ def install(parser: ArgumentParser) -> None:
         metavar="VARIABLE VALUE",
         help="Define the given environment variable as the kernel is started.",
     )
+    parser.add_argument(
+        "--dev",
+        help="""
+            This sets up the kernel in development mode, with a uvk features delivered through
+            an editable local copy of the repository.
+        """,
+    )
     add_args_quiet_verbose(parser)
     parser.set_defaults(_main_=_main_)
 
@@ -145,6 +132,7 @@ def _main_(params: Namespace) -> None:
         with prepare_kernelspec(
             name=params.name,
             display_name=params.display_name,
+            dev_path=params.dev,
             env=params.env or [],
         ) as dir_ks:
             mgr.install_kernel_spec(
