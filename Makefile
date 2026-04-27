@@ -1,7 +1,7 @@
 VERSIONS_PYTHON = 3.11 3.12 3.13 3.14
 PYTHON_LOCAL = $(shell python -c "import sys; print(sys.executable)")
-UV = uv $(1) --python $(subst local,$(PYTHON_LOCAL),$(notdir $(2))) --dev
-UV_MKDOCS = uv run --all-extras mkdocs
+UV = uv $(1) --python $(subst local,$(PYTHON_LOCAL),$(notdir $(2))) --dev --all-extras
+UV_MKDOCS = $(call UV,run,/local) mkdocs
 
 every-check: every-check/local
 every-check/%: test/% type/% pep8/%

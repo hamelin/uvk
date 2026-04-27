@@ -54,13 +54,11 @@ ignore = ["E501"]
 
 [dependency-groups]
 dev = [
+    "jupyterlab>=4.5.6",
+    "nbconvert>=7.17.0",
     "pytest>=9.0.2",
     "ruff>=0.15.8",
     "ty>=0.0.26",
-]
-proto = [
-    "ipython>=9.10.0",
-    "jupyterlab>=4.5.4",
 ]
 
 [tool.uv.build-backend]
