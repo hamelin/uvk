@@ -1,4 +1,4 @@
-from collections.abc import Iterator, Sequence
+from collections.abc import Sequence
 import logging as lg
 import re
 import tomllib
@@ -6,7 +6,7 @@ import warnings as w
 
 
 Requirements = Sequence[str]
-LOG = lg.getLogger(__name__.split(".")[0])
+LOG = lg.getLogger(__name__)
 
 
 def parse_dependencies(deps: str) -> Requirements:
@@ -19,12 +19,9 @@ class ScriptMetadataParseError(ValueError):
         self.metadata = metadata
 
 
-class NoScriptMetadataStartLine(ScriptMetadataParseError):
-    def __init__(self, metadata: str) -> None:
-        super().__init__(
-            "Cannot find the script metadata opening line `# /// script`",
-            metadata,
-        )
+class NoMetadata(ScriptMetadataParseError):
+    def __init__(self, snippet: str) -> None:
+        super().__init__("Cannot parse script metadata out of this snippet", snippet)
 
 
 class NoScriptMetadataEndLine(ScriptMetadataParseError):
@@ -36,25 +33,12 @@ class NoScriptMetadataEndLine(ScriptMetadataParseError):
 
 
 class IllegalLine(ScriptMetadataParseError):
-    def __init__(self, metadata: str) -> None:
+    def __init__(self, snippet: str, num_line: int) -> None:
         super().__init__(
-            (
-                "An illegal line (neither `#` nor starting with `# `) appears among "
-                "the script metadata"
-            ),
-            metadata,
+            f"Noncomment line {num_line} is illegal within inline script snippet.",
+            snippet,
         )
-
-
-def iter_lines_metadata(metadata: str) -> Iterator[str]:
-    for line in metadata.split("\n"):
-        line = line.strip()
-        if line in {"", "#"}:
-            pass
-        elif re.match(r"# ", line):
-            yield line[2:]
-        else:
-            raise IllegalLine(metadata)
+        self.num_line = num_line
 
 
 class TrailingLines(Warning):
@@ -62,17 +46,24 @@ class TrailingLines(Warning):
 
 
 def parse_script_metadata(metadata: str) -> dict:
-    lines_metadata = iter_lines_metadata(metadata)
+    lines_metadata = iter(enumerate(metadata.splitlines(), start=1))
     try:
-        while not re.match(r"/// script\w*$", next(lines_metadata)):
-            pass
+        while True:
+            num_line, line = next(lines_metadata)
+            if re.match(r"# /// script\w*$", line):
+                break
     except StopIteration:
-        raise NoScriptMetadataStartLine(metadata)
+        raise NoMetadata(metadata)
+    LOG.debug(f"Found script metadata header at line {num_line}")
 
     lines_toml = []
-    for line in lines_metadata:
-        if re.match(r"///\w*$", line):
+    for num_line, line in lines_metadata:
+        if re.match(r"# ///\w*$", line):
+            LOG.debug(f"Found script metadata footer at line {num_line}")
             break
+        if not (m := re.match(r"#$|# ", line)):
+            raise IllegalLine(metadata, num_line)
+        line = line[len(m.group(0)) :]
         lines_toml.append(line)
     else:
         raise NoScriptMetadataEndLine(metadata)

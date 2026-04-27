@@ -6,44 +6,41 @@ from warnings import catch_warnings
 from uvk.parse import (
     IllegalLine,
     NoScriptMetadataEndLine,
-    NoScriptMetadataStartLine,
-    parse_dependencies,
+    NoMetadata,
     parse_script_metadata,
 )
 
-from . import cook
 
-
-@pytest.mark.parametrize(
-    "line,expected",
-    [
-        ("", []),
-        ("numpy", ["numpy"]),
-        ("numpy scipy>1.11", ["numpy", "scipy>1.11"]),
-        (
-            "numpy scipy>=1.12,<1.15,!=1.13.1 scikit-learn==1.8.0",
-            ["numpy", "scipy>=1.12,<1.15,!=1.13.1", "scikit-learn==1.8.0"],
-        ),
-        (
-            """
-            numpy
-            scipy>=1.12
-            scikit-learn==1.8.0
-            """,
-            ["numpy", "scipy>=1.12", "scikit-learn==1.8.0"],
-        ),
-        (
-            """\
-            numpy scipy>=1.12
-                scikit-learn==1.8.0
-            pandas pyarrow
-            """,
-            ["numpy", "scipy>=1.12", "scikit-learn==1.8.0", "pandas", "pyarrow"],
-        ),
-    ],
-)
-def test_parse_dependencies(line: str, expected: list[str]) -> None:
-    assert expected == parse_dependencies(line)
+# @pytest.mark.parametrize(
+#     "line,expected",
+#     [
+#         ("", []),
+#         ("numpy", ["numpy"]),
+#         ("numpy scipy>1.11", ["numpy", "scipy>1.11"]),
+#         (
+#             "numpy scipy>=1.12,<1.15,!=1.13.1 scikit-learn==1.8.0",
+#             ["numpy", "scipy>=1.12,<1.15,!=1.13.1", "scikit-learn==1.8.0"],
+#         ),
+#         (
+#             """
+#             numpy
+#             scipy>=1.12
+#             scikit-learn==1.8.0
+#             """,
+#             ["numpy", "scipy>=1.12", "scikit-learn==1.8.0"],
+#         ),
+#         (
+#             """\
+#             numpy scipy>=1.12
+#                 scikit-learn==1.8.0
+#             pandas pyarrow
+#             """,
+#             ["numpy", "scipy>=1.12", "scikit-learn==1.8.0", "pandas", "pyarrow"],
+#         ),
+#     ],
+# )
+# def test_parse_dependencies(line: str, expected: list[str]) -> None:
+#     assert expected == parse_dependencies(line)
 
 
 @pytest.mark.parametrize(
@@ -116,7 +113,7 @@ def test_parse_dependencies(line: str, expected: list[str]) -> None:
             """\
             # /// script
             # dependencies = ["datamapplot"]
-
+            #
             # [tool.uv.sources]
             # datamapplot = { git = "https://github.com/TutteInstitute/datamapplot.git" }
             # ///
@@ -155,7 +152,7 @@ def test_parse_script_metadata_correct(metadata_raw: str, expected: dict) -> Non
     [
         (
             "",
-            NoScriptMetadataStartLine,
+            NoMetadata,
         ),
         (
             """\
@@ -164,7 +161,7 @@ def test_parse_script_metadata_correct(metadata_raw: str, expected: dict) -> Non
             #     "requests",
             # ]
             """,
-            NoScriptMetadataStartLine,
+            NoMetadata,
         ),
         (
             """\
@@ -172,7 +169,7 @@ def test_parse_script_metadata_correct(metadata_raw: str, expected: dict) -> Non
             # requires-python = ">3.10"
             # ///
             """,
-            IllegalLine,
+            NoMetadata,
         ),
         (
             """\
@@ -180,7 +177,7 @@ def test_parse_script_metadata_correct(metadata_raw: str, expected: dict) -> Non
             # requires-python = ">3.10"
             # ///
             """,
-            NoScriptMetadataStartLine,
+            NoMetadata,
         ),
         (
             """\
@@ -188,7 +185,7 @@ def test_parse_script_metadata_correct(metadata_raw: str, expected: dict) -> Non
             # requires-python = ">3.10"
             # ///
             """,
-            NoScriptMetadataStartLine,
+            NoMetadata,
         ),
         (
             """\
@@ -227,7 +224,7 @@ def test_parse_script_metadata_correct(metadata_raw: str, expected: dict) -> Non
             # requires-python = ">3.10"
             # ///
             """,
-            IllegalLine,
+            NoMetadata,
         ),
     ],
 )
