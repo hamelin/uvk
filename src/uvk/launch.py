@@ -112,9 +112,8 @@ def get_cmdline_uv(script_metadata: str, path_project: Path | None) -> list[str]
         cmdline += ["--project", str(path_project)]
     else:
         LOG.info("Running kernel in isolated environment")
-        cmdline += ["--no-project"]
+        cmdline += ["--no-project", "--script"]
 
-    cmdline.append("--script")
     return cmdline
 
 
@@ -134,8 +133,8 @@ def _main_(params: Namespace) -> None:
         LOG.debug("No project found")
 
     cmdline_uv = get_cmdline_uv(script_metadata, path_project)
-    cmdline_uv_s = " ".join(shlex.quote(token) for token in cmdline_uv)
-    LOG.debug(f"uv command line: {cmdline_uv_s}  # followed with script and connection file")
+    env = compose_env_kernel(cmdline_uv)
+    LOG.debug(f"uv command line: {env['UVK_CMDLINE_PREFIX']}  # followed with script and connection file")
 
     with NamedTemporaryFile(mode="w+", encoding="utf-8", suffix=".py") as script_launch:
         print(script_metadata, file=script_launch)
@@ -150,7 +149,7 @@ def _main_(params: Namespace) -> None:
         )
         script_launch.flush()
 
-        cp = sp.run([*cmdline_uv, script_launch.name, "-f", params.connection_file])
+        cp = sp.run([*cmdline_uv, script_launch.name, "-f", params.connection_file], env=env)
     sys.exit(cp.returncode)
 
 
@@ -163,3 +162,12 @@ def extract_script_metadata(notebook: NotebookNode) -> str | None:
             except NoMetadata:
                 pass
     return None
+
+
+def compose_env_kernel(cmdline_prefix: list[str]) -> dict[str, str]:
+    env = os.environ.copy()
+    if "--project" in cmdline_prefix:
+        LOG.debug("Having a project dir, we drop VIRTUAL_ENV to avoid uv warning")
+        del env["VIRTUAL_ENV"]
+    env["UVK_CMDLINE_PREFIX"] = " ".join(shlex.quote(token) for token in cmdline_prefix)
+    return env
