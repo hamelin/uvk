@@ -1,4 +1,5 @@
 import pytest  # noqa
+from textwrap import dedent
 from typing import Type
 from warnings import catch_warnings
 
@@ -146,7 +147,7 @@ def test_parse_dependencies(line: str, expected: list[str]) -> None:
     ],
 )
 def test_parse_script_metadata_correct(metadata_raw: str, expected: dict) -> None:
-    assert expected == parse_script_metadata(cook(metadata_raw))
+    assert expected == parse_script_metadata(dedent(metadata_raw))
 
 
 @pytest.mark.parametrize(
@@ -234,13 +235,13 @@ def test_parse_script_metadata_break_convention(
     metadata_raw: str, expected: Type[ValueError]
 ) -> None:
     with pytest.raises(expected):
-        parse_script_metadata(cook(metadata_raw))
+        parse_script_metadata(dedent(metadata_raw))
 
 
 def test_parse_script_metadata_warn_trailing_lines():
     with catch_warnings(record=True) as ws:
         parse_script_metadata(
-            cook(
+            dedent(
                 """\
                 # /// script
                 # requires-python = ">3.10"

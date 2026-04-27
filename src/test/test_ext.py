@@ -11,13 +11,12 @@ from pathlib import Path
 import pytest  # noqa
 import subprocess as sp
 import sys
+from textwrap import dedent
 import tomllib
 from uuid import uuid4
 from uv import find_uv_bin
 
 from uvk.install import prepare_kernelspec
-
-from . import cook
 
 
 @pytest.fixture(scope="session")
@@ -200,7 +199,7 @@ def imports2cell(*imports: str) -> str:
     ],
 )
 def test_imports2cell(imports: tuple[str, ...], expected_raw: str):
-    assert cook(expected_raw) == imports2cell(*imports)
+    assert dedent(expected_raw) == imports2cell(*imports)
 
 
 def import_np_jl(client: BlockingKernelClient) -> tuple[ResultExec, Outputs]:
@@ -238,7 +237,7 @@ def test_dependencies(client_uvk: BlockingKernelClient, dependencies_invocation:
     check_import_np_jl_fails(client_uvk)
     _, outputs = execute(
         client_uvk,
-        cook(dependencies_invocation),
+        dedent(dependencies_invocation),
     )
     assert "text/markdown" not in outputs
     check_import_np_jl_succeeds(client_uvk)
@@ -267,7 +266,7 @@ def test_dependencies_normalized(
     check_import_np_jl_fails(client_uvk)
     _, outputs = execute(
         client_uvk,
-        cook(dependencies_invocation),
+        dedent(dependencies_invocation),
     )
     assert [
         (
@@ -290,7 +289,7 @@ def test_dependencies_normalized(
 def test_script_metadata_python_unsatisfied(client_uvk: BlockingKernelClient) -> None:
     r, _ = execute(
         client_uvk,
-        cook("""\
+        dedent("""\
             %%script_metadata
             # /// script
             # require-python = "==3.8.4"
@@ -310,10 +309,10 @@ def test_script_metadata_add_dependencies(
     check_import_np_jl_fails(client_uvk)
     r, outputs = execute(
         client_uvk,
-        cook(
+        dedent(
             "\n".join(
                 [
-                    cook(
+                    dedent(
                         """\
                         %%script_metadata
                         # /// script
@@ -342,7 +341,7 @@ def test_uv_magic_pip_install(client_uvk: BlockingKernelClient) -> None:
     check_import_np_jl_fails(client_uvk)
     r, _ = execute(
         client_uvk,
-        cook(
+        dedent(
             """\
             %uv pip install numpy scipy>1.11 scikit-learn==1.8.0
             """
@@ -356,7 +355,7 @@ def test_uv_magic_pip_install(client_uvk: BlockingKernelClient) -> None:
 def test_uv_magic_run(client_uvk: BlockingKernelClient) -> None:
     r, outputs = execute(
         client_uvk,
-        cook(
+        dedent(
             """\
             %uv run python -c 'import os; print(os.environ["VIRTUAL_ENV"])'
             import os
@@ -476,7 +475,7 @@ def test_project_add_remove_breaks_stuff(
 ) -> None:
     r, output = execute(
         client_uvk,
-        cook(
+        dedent(
             """\
             from pathlib import Path
             import sys
