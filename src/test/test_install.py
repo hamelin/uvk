@@ -25,6 +25,7 @@ def ns(
     display_name: str = display_name_default(),
     user: bool = False,
     prefix: Path | None = None,
+    dev: str | None = None,
     env: list[tuple[str, str]] | None = None,
     quiet: int = 0,
 ) -> Namespace:
@@ -36,6 +37,7 @@ def ns(
         prefix=prefix,
         env=[list(t) for t in env] if env else None,
         quiet=quiet,
+        dev=dev,
         _main_=_main_,
     )
 
@@ -70,6 +72,7 @@ def ns(
         ),
         (ns(quiet=1), ["--quiet"]),
         (ns(quiet=4), ["-qqq", "--quiet"]),
+        (ns(dev="asdf/qwer"), ["--dev", "asdf/qwer"]),
     ],
 )
 def test_parse_args_install(expected: Namespace, args: list[str]) -> None:

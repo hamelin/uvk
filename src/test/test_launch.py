@@ -265,7 +265,7 @@ def test_get_script_metadata(expected, name, name2path) -> None:
         (
             "",
             None,
-            [find_uv_bin(), "run", "--with", "uvk", "--no-project", "--isolated", "--script"],
+            [find_uv_bin(), "run", "--with", "uvk", "--no-project", "--script"],
         ),
         (
             dedent(
@@ -280,12 +280,12 @@ def test_get_script_metadata(expected, name, name2path) -> None:
                 """,
             ),
             None,
-            [find_uv_bin(), "run", "--with", "uvk", "--no-project", "--isolated", "--script"],
+            [find_uv_bin(), "run", "--with", "uvk", "--no-project", "--script"],
         ),
         (
             "",
             Path("asdf/qwerty"),
-            [find_uv_bin(), "run", "--with", "uvk", "--project", "asdf/qwerty", "--script"],
+            [find_uv_bin(), "run", "--with", "uvk", "--project", "asdf/qwerty"],
         ),
         (
             dedent(
@@ -297,7 +297,7 @@ def test_get_script_metadata(expected, name, name2path) -> None:
                 """,
             ),
             Path("asdf/qwerty"),
-            [find_uv_bin(), "run", "--with", "uvk", "--no-project", "--isolated", "--script"],
+            [find_uv_bin(), "run", "--with", "uvk", "--no-project", "--script"],
         ),
         (
             dedent(
@@ -323,7 +323,6 @@ def test_get_script_metadata(expected, name, name2path) -> None:
                 "--cache-dir",
                 "/cache",
                 "--no-project",
-                "--isolated",
                 "--script",
             ],
         ),

@@ -134,7 +134,9 @@ def _main_(params: Namespace) -> None:
 
     cmdline_uv = get_cmdline_uv(script_metadata, path_project)
     env = compose_env_kernel(cmdline_uv)
-    LOG.debug(f"uv command line: {env['UVK_CMDLINE_PREFIX']}  # followed with script and connection file")
+    LOG.debug(
+        f"uv command line: {env['UVK_CMDLINE_PREFIX']}  # followed with script and connection file"
+    )
 
     with NamedTemporaryFile(mode="w+", encoding="utf-8", suffix=".py") as script_launch:
         print(script_metadata, file=script_launch)
