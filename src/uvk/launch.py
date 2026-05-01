@@ -139,21 +139,52 @@ def _main_(params: Namespace) -> None:
         f"uv command line: {env['UVK_CMDLINE_PREFIX']}  # followed with script and connection file"
     )
 
-    with NamedTemporaryFile(mode="w+", encoding="utf-8", suffix=".py") as script_launch:
-        print(script_metadata, file=script_launch)
-        print(
-            dedent(
-                """\
-                from ipykernel import kernelapp as app
-                app.launch_new_instance()
-                """
-            ),
-            file=script_launch,
-        )
-        script_launch.flush()
+    kernel = None
+    try:
+        with NamedTemporaryFile(mode="w+", encoding="utf-8", suffix=".py") as script_launch:
+            print(script_metadata, file=script_launch)
+            print(
+                dedent(
+                    """\
+                    from ipykernel import kernelapp as app
+                    app.launch_new_instance()
+                    """
+                ),
+                file=script_launch,
+            )
+            script_launch.flush()
 
-        cp = sp.run([*cmdline_uv, script_launch.name, "-f", params.connection_file], env=env)
-    sys.exit(cp.returncode)
+            kernel = sp.Popen(
+                [*cmdline_uv, script_launch.name, "-f", params.connection_file],
+                env=env,
+            )
+            LOG.info(f"Kernel PID {kernel.pid}")
+            kernel.communicate()
+        sys.exit(kernel.returncode)
+    except KeyboardInterrupt:
+        LOG.critical("Interrupt (Ctrl+C) triggered from parent")
+        if kernel is not None and kernel.returncode is None:
+            try:
+                LOG.warning("End kernel step 1: terminate")
+                kernel.terminate()
+                kernel.wait(5.0)
+            except sp.TimeoutExpired:
+                try:
+                    LOG.warning("End kernel step 2: kill")
+                    kernel.kill()
+                    kernel.wait(5.0)
+                except sp.TimeoutExpired:
+                    pass
+
+            if kernel.returncode is None:
+                LOG.error(
+                    "Kernel process hanging after being killed: leave mess behind and move on"
+                )
+            else:
+                LOG.warning(f"Kernel terminated with exit code {kernel.returncode}")
+        else:
+            LOG.debug("No kernel to clean up it seems")
+        sys.exit(11)
 
 
 def extract_script_metadata(notebook: NotebookNode) -> str | None:
