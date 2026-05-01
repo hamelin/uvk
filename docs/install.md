@@ -1,10 +1,3 @@
-<style>
-  span.uvk {
-    font-family: sans-serif;
-  }
-</style>
-
-
 # Installing
 
 ## Standalone Jupyter setup
@@ -40,15 +33,15 @@ Here are instructions for the most common situations:
 !!! note "UNIX-ish (adj.)"
     Refers to all UNIX-descended or UNIX-imitating operating systems in used commonly to drive
     modern workstations. Covers GNU/Linux distributions, \*BSD and MacOS &mdash;
-    all tier-1 and tier-2 [uv-supported](https://docs.astral.sh/uv/reference/policies/platforms/)
+    all non-Windows tier-1 and tier-2
+    [uv-supported](https://docs.astral.sh/uv/reference/policies/platforms/)
     platforms.
 
 Now install Jupyter Lab or Jupyter Notebook and <span class="uvk">uvk</span>.
 and install the <span class="uvk">uvk</span> kernel spec so that Jupyter Lab sees it.
 
 ```sh
-pip install jupyterlab notebook uvk
-uvk --sys-prefix
+pip install jupyter uvk
 ```
 
 From there, start Jupyter Lab or Notebook:
@@ -74,7 +67,6 @@ as it is not distributed as a Conda package.
 conda create -n jupyter --yes jupyter jupyterlab
 conda activate jupyter
 pip install uvk
-uvk --sys-prefix
 jupyter lab
 ```
 
@@ -101,23 +93,13 @@ Run the following:
 uv tool install jupyter-core --with=jupyter --with-executables-from=uvk
 ```
 
-Now your shell has the `uvk` executable,
-which sees itself as part of the same tool environment as the Jupyter tools.
-Now run
-
-```sh
-uvk --sys-prefix
-```
-
-to install the <span class="uvk">uvk</span> kernel.
-Running Jupyter
-
-```sh
-jupyter lab
-```
-
-is all it takes now to enjoy the kernel from everywhere the `jupyter` executable is not
-clobbered.
+This environment will already carry a general-purpose <span class="uvk">uvk</span>
+kernel,
+which will show up in the launcher window when Jupyter Lab or Jupyter Notebook is started.
+In addition to the Jupyter apps, the shell has the `uvk` executable,
+necessary to [start](reference/cli.md#launch) <span class="uvk">uvk</span> kernels
+as well as to [add](reference/cli.md#install) further <span class="uvk">uvk</span>
+kernels with site-specific configurations.
 
 ## Jupyterhub setup as administrator
 
@@ -139,11 +121,10 @@ Administrators may look up other examples on this page to adapt the instructions
 python -m venv ./jupyterhub
 . jupyterhub/bin/activate
 pip install jupyterhub uvk
-uvk --sys-prefix
 ```
 
-The Jupyterhub system then includes the <span class="uvk">uvk</span> kernel side by side with the
-default IPython kernel.
+The Jupyterhub system then includes the default <span class="uvk">uvk</span>
+kernel side by side with the default IPython kernel.
 
 ## _User_ <span class="uvk">uvk</span> kernel showing up in any Jupyter instance
 
@@ -157,7 +138,7 @@ without administrator intervention.**
 If **uv** is available,
 
 ```sh
-uvx uvk --user
+uvx uvk install --user
 ```
 
 is all that's needed.
@@ -168,7 +149,7 @@ building a permanent virtual environment is necessary.
 python -m venv .uvk
 . .uvk/bin/activate
 pip install uvk      # Comes with uv!
-uvk --user
+uvk install --user
 deactivate           # So other env modifications don't modify this one.
 ```
 
@@ -185,22 +166,27 @@ Newly started Jupyter instances will have it from the get-go.
 
 Jupyter instances all come with a pre-deployed IPython kernel,
 named by default **Python 3 (ipykernel)**.
-Users can add their own IPython kernels,
-typically in order to use their own environments in Jupyter kernels.
+Similarly, installing the **uvk** Python package pre-deploys a _default_
+<span class="uvk">uvk</span> kernel.
+
+In addition, users can add their own IPython kernels,
+typically in order to use their own environments in Jupyter kernels,
+or to configure their kernel in various ways.
 Such kernels get an *identifier name* and a *display name*:
-the former is for tracking the kernel spec by tools,
+the former is for tools to track the kernel spec,
 and the latter is used to label the kernel spec in the Jupyter interface.
 
 ```sh
 python -m ipykernel install --name mykernel --display-name 'My kernel from my env'
 ```
 
-The `uvk` executable serves the same purpose as the `ipykernel install` program.
-It also takes the same parameters.
+The `uvk` executable also provides an `install` subcommand that serves the same purpose as
+`ipykernel install`.
+It takes essentially the same parameters.
 
 ```sh
-uvk --name my_uvk --display-name 'I liuvke this a lot'
+uvk install --name my_uvk --display-name 'I liuvke this a lot'
 ```
 
 Invoke `uvk --help` for a terse listing of the command line arguments.
-The [full reference](reference/uvk_cli.md) includes further examples.
+The [full reference](reference/cli.md#install) includes further examples.

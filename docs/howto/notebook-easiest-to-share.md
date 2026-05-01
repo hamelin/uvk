@@ -1,25 +1,18 @@
-<style>
-  span.uvk {
-    font-family: sans-serif;
-  }
-</style>
-
-
 # How to author a notebook to make is the easiest possible to share
 
 [One](../index.md#why-use-this) of the design objectives of <span class="uvk">uvk</span>
 is to make notebooks easier to share with collaborators enabling them to be
 *self-contained*.
 Under reasonable circumstances,
-such notebooks could be published e-mailed to people or published all by themselves
+such notebooks could be e-mailed to people or published all by themselves
 (as [Github Gists](https://gist.github.com/), for instance),
 then be open in a reader's Jupyter instance and run without any preparation ritual,
 nor fear that the notebook might affect one's own computing space.
 
 !!! tip "Summary of best practices"
     1. Have a <span class="uvk">uvk</span> kernel named `uvk`.
-    1. Use the [`%require_python`](../reference/uvk_ext.md#uvk.require_python) and [`%%dependencies`](../reference/uvk_ext.md#uvk.dependencies) magics (from the <span class="uvk">uvk</span> IPython extension) to set up the computing environment.
-    1. Document clearly data downloads and generations, where they are stored, and how they can be deleted after the notebook is done.
+    1. Use [inline script metadata](../tutorial.ipynb), but avoid customizing the **uv** command line heavily.
+    1. Document data downloads and generations clearly: where data is stored, and how it can be deleted once the reader is done with the notebook.
 
     Read below for full details.
 
@@ -39,7 +32,7 @@ If someone gets crafty and changes the name of their kernel at install time,
 as in
 
 ```sh
-uvk --name fancy-uvk --user
+uvk install --name fancy-uvk --user
 ```
 
 then new notebooks created with its icon get associated with kernel `fancy-uvk`.
@@ -57,7 +50,7 @@ It is set through the `--display-name` argument to the `uvk` executable,
 as in this example:
 
 ```sh
-uvk --user --display-name 'I ❤️ uvk'
+uvk install --user --display-name 'I ❤️ uvk'
 ```
 
 If the (not display) name of the kernel tied to the notebook is the same,
@@ -84,7 +77,7 @@ of the same (not dipslay) name.
     Thus, amusingly, the tip above is equally useful for sharing notebooks as it is
     for reading notebooks shared by others.
 
-## Build the computing environment...
+## Provide a metadata cell
 
 The downside of <span class="uvk">uvk</span> providing a clean isolated Python
 environment on the fly is that this environment is nearly bare at the moment
@@ -93,71 +86,39 @@ The computations expressed in the notebook may rely on Python syntax or standard
 library packages that are only available in some versions of the Python distribution.
 Furthermore,
 the author may be relying on a panoply of external packages.
-The <span class="uvk">uvk</span> IPython extension provides facilities to
-fulfill both these goals.
-Load this extension with
+[Inline script metadata](https://packaging.python.org/en/latest/specifications/inline-script-metadata/)
+fixes this problem for Python scripts [run with **uv**](https://docs.astral.sh/uv/guides/scripts/).
+**<span class="uvk">uvk</span> uses the same metadata syntax.**
+Simply type such a snippet of comment-guarded TOML in a code cell.
+If this sounds tedious, the use
+the <span class="uvk">uvk</span> IPython extension and its `%uvk` cell magic,
+as demonstrated in the [tutorial](../tutorial.ipynb).
 
-```ipython
-%load_ext uvk
-```
+### Versioning package dependencies
 
-### Constrain the Python distribution
-
-The reader who will run a notebook shared by somebody else has to provide a suitable
-Python distribution.
-The author will manifest their constraints with the [`%require_python`](../reference/uvk_ext.md#uvk.require_python)
-line magic.
-When this line magic is run,
-it raises an exception if the Python interpreter's version does not satisfy
-the constraint,
-stopping a notebook execution ahead of, presumably,
-version-specific computational idioms.
-For instance,
-if the author runs Python 3.13 and wants to be absolutely certain that their
-syntax and package usage
-(for instance, they use the [`copy.replace`](https://docs.python.org/3.13/library/copy.html#copy.replace)
-function)
-don't raise issue when run by their audience:
-
-```ipython
-%require_python >=3.13
-```
-
-Or, if the notebook documents a very specific interpreter bug in, says, Python 3.11.8:
-
-```ipython
-%require_python ==3.11.8
-```
-
-Remark that using this cell is not necessary per se.
-Very little Python code breaks between Python versions,
-or is as specific as the last contrived example.
-It does, however, document expectations usefully for readers that may
-encounter problems.
-
-### Gather external package dependencies
-
-The set of external packages the notebook's computations depend on are most elegantly captured
-using the [`%%dependencies`](../reference/uvk_ext.md#uvk.dependencies) cell magic.
+The set of external packages the notebook uses are captured through the `dependencies` field of the metadata cell.
 Here is an example pulling in Matplotlib, Requests, Pandas and Scikit-Learn:
 
 ```ipython
-%%dependencies
-matplotlib
-pandas
-requests
-scikit-learn
+# /// script
+# require-python = ">=3.13"
+# dependencies = ["matplotlib", "pandas", "requests", "scikit-learn"]
+# ///
 ```
 
 It is possible to specify versions for these packages.
-Besides, for reproducibility purposes, it may even be the better practice.
+This practice fosters reproducibility of the computations.
 
 ```ipython
-%%dependencies
-matplotlib==3.10.8
-pandas==3.0.2
-requests==2.33.1
-scikit-learn==1.8.0
+# /// script
+# require-python = ">=3.13"
+# dependencies = [
+#     "matplotlib==3.10.8",
+#     "pandas==3.0.2",
+#     "requests==2.33.1",
+#     "scikit-learn==1.8.0",
+# ]
+# ///
 ```
 
 !!! note "Dependency fixed- or upper-bounding is **fine** with <span class='uvk'>uvk</span>"
@@ -169,41 +130,56 @@ scikit-learn==1.8.0
     Being specify on the dependencies maximizes one's chances that their notebook will be
     runnable by their audience, even years beyond the moment of publication.
 
-!!! attention "Constraint syntax is more restricted than PyPA specification"
-    The Python Package Authority specifies a rather loose [syntax](https://pip.pypa.io/en/stable/reference/requirement-specifiers/)
-    for package requirements.
-    For implementation simplicity, <span class="uvk">uvk</span> relies on largely the
-    same package-extra-bounds system,
-    but **forbids blanks between package name, optional extra specifications, and version bound**.
-    Thus,
+The syntax demonstrated above uses a compact representation of constraints,
+without any blank.
+When using the `%uvk`/`%%uvk` magic,
+airier blank-laden expressions may be used,
+provided each requirement is properly framed in quotes.
+<span class="uvk">uvk</span> normalizes it back to the compact form.
 
-    <pre>
-    <code class="hljs language-python">matplotlib==3.10.8
-    marimo[sql]<0.23
-    </code></pre>
+```
+%%uvk -a "rich > 14"
+# /// script
+# require-python = ">=3.13"
+# dependencies = [
+#     "matplotlib==3.10.8",
+#     "pandas==3.0.2",
+#     "requests==2.33.1",
+#     "scikit-learn==1.8.0",
+# ]
+# ///
+--------------------------------------
+# /// script
+# require-python = ">=3.13"
+# dependencies = [
+#     "matplotlib==3.10.8",
+#     "pandas==3.0.2",
+#     "requests==2.33.1",
+#     "rich>14",
+#     "scikit-learn==1.8.0",
+# ]
+# ///
+```
 
-    are **valid** ✅; however
+### **uv** command line customizations port poorly
 
-    <pre>
-    <code class="hljs language-python">matplotlib == 3.10.8
-    marimo [sql] <.23
-    </code></pre>
+The design of the **uv** command,
+on which <span class="uvk">uvk</span> relies for all the heavy lifting,
+is such that it requires very little command line option tweaking.
+Normally,
+one configures their main settings through their own `uv.toml` file,
+aligning themselves to whatever constraints imposed by their local network or IT infrastructure,
+setting up package index mirrors if Internet connectivity is filtered in their environment,
+and so on.
+Thus,
+customization of the **uv** command line that starts the IPython kernel,
+through the `tool.uvk.uv-args` field of the metadata cell,
+complicates the portability of your notebook.
+In general,
+no such customization should be needed;
+the decision is yet left to the user's judgment.
 
-    are **invalid** 🚫.
-
-Under the hood, `%%dependencies` invokes `uv pip install`,
-a faster implementation of trusty old `pip install` that leverages uv's
-super efficient caching tricks.
-It thus provides both good documentation of computational requirements
-and implements their deployment at the best speed affordable.
-
-Remark that, while it is possible to use the `%%dependencies` cell more than once in a notebook,
-it is not advised to do so.
-Dependency network resolution works best,
-and is most reproducible as well,
-when all constraints are considered simultaneously.
-
-## ... then avoid spilling out of it
+## Mind the data flows
 
 uv and <span class="uvk">uvk</span> provide an isolated computing environment with respect to
 package dependencies.

@@ -172,9 +172,11 @@ class UvArgs:
 class Help:
     @classmethod
     def parse(cls, args: Arguments) -> tuple[Self | None, Arguments]:
+        if args.current == "--help-rtd":
+            raise UvkHelp(True)
         if args.current not in {"-h", "--help"}:
             return None, args
-        raise UvkHelp()
+        raise UvkHelp(False)
 
     def execute(self, metadata: Metadata) -> None:
         raise RuntimeError("Wrong way")
@@ -225,12 +227,13 @@ def uvk(shell: InteractiveShell) -> Callable[[str, str], None]:
             for command in parse_args(line):
                 command.execute(metadata)
             shell.set_next_input(as_script_metadata(metadata), replace=bool(cell))
-        except UvkHelp:
+        except UvkHelp as ex:
+            is_rtd, *_ = ex.args
             display(
                 Markdown(
                     dedent(
                         """\
-                        # <span style="font-family: sans-serif;">uvk<span> &mdash; Editor for script metadata
+                        ## <a id="uvk-reference"></a>The `%uvk`/`%%uvk` magic
 
                         Assist in the editing of various aspects of a cell containing inline script
                         metadata. It is not strictly necessary to use this cell magic to change the
@@ -258,9 +261,9 @@ def uvk(shell: InteractiveShell) -> Callable[[str, str], None]:
                         # ///
                         ```
 
-                        ## Options
+                        ### Options
 
-                        ### `-p`, `--python` *version-constraints*
+                        #### `-p`, `--python` *version-constraints*
 
                         Set the `require-python` field of the script metadata so that the Python
                         interpreter that will be chosen to run the kernel satisfies the given
@@ -277,7 +280,7 @@ def uvk(shell: InteractiveShell) -> Callable[[str, str], None]:
                         # ///
                         ```
 
-                        ### `-a`, `--add` *requirement* ...
+                        #### `-a`, `--add` *requirement* ...
 
                         Add the given package requirements to the `dependencies` field of the
                         metadata. The requirements are package names that one may suffix with
@@ -306,7 +309,7 @@ def uvk(shell: InteractiveShell) -> Callable[[str, str], None]:
                         # ///
                         ```
 
-                        ### `-r`, `--remove` *package* ...
+                        #### `-r`, `--remove` *package* ...
 
                         Remove the named packages from the `dependencies` list. While only
                         package names are required, one may also suffix constraints, but these
@@ -336,7 +339,7 @@ def uvk(shell: InteractiveShell) -> Callable[[str, str], None]:
                         # ///
                         ```
 
-                        ### `-A`, `--uv-args` *option* ... `--`
+                        #### `-A`, `--uv-args` *option* ... `--`
 
                         Specifies command-line arguments to add to the invocation of `uv`
                         that starts the IPython kernel for this notebook. Quoted arguments
@@ -367,7 +370,11 @@ def uvk(shell: InteractiveShell) -> Callable[[str, str], None]:
                         # ///
                         ```
 
-                        ## Notes
+                        #### `-h`, `--help`
+
+                        Displays this document.
+
+                        ### Notes
                         
                         Multiple options can be provided on the top line. One may fully
                         specify their metadata in a single operation:
@@ -397,9 +404,14 @@ def uvk(shell: InteractiveShell) -> Callable[[str, str], None]:
                         mean of convenience. Script metadata typos might prevent the kernel
                         from starting, and Jupyterhub platform, no feedback is provided anywhere
                         visible when such difficulties occur.
+                        """ + (
+                            ""
+                            if is_rtd
+                            else """\
 
-                        Complete documentation is available on [ReadTheDocs](https://uvk.readthedocs.io/reference/uvk_ext/).
-                        """
+                        Complete documentation is available on [ReadTheDocs](https://uvk.readthedocs.io/reference/ext/).
+                            """
+                        )
                     )
                 )
             )

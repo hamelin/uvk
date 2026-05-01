@@ -1,12 +1,6 @@
-<style>
-  span.uvk {
-    font-family: sans-serif;
-  }
-</style>
-
 # About <span class="uvk">uvk</span>
 
-<span class="uvk">uvk</span> is a wrapper around the [Ipython Jupyter kernel](https://ipykernel.readthedocs.io/en/stable/)
+<span class="uvk">uvk</span> is a wrapper around the [IPython Jupyter kernel](https://ipykernel.readthedocs.io/en/stable/)
 that launches it through the [uv](https://docs.astral.sh/uv/) package and project manager.
 uv is spectacularly fast and <span class="uvk">uvk</span> leans on its ability to run
 Python processes in ad hoc isolated virtual environments.
@@ -78,13 +72,11 @@ setup, such as [Jupyterhub users](#custom-user-environments-on-jupyterhub).
 
 <span class="uvk">uvk</span> addresses this problem by automatically providing
 an isolated runtime environment for a notebook authored against it.
-<span class="uvk">uvk</span> further provides an IPython kernel [extension](reference/uvk_ext.md)
-through which an author can elegantly express the requirements the kernel process
-(and, in certain respects, the environment that spawned it) must satisfy.
-The user does not have to guard against spurious modifications to the environment
-that spawned their Jupyter instance.
-Once the notebook has been executed and the user shuts it down,
-the environment is automatically dismantled.
+<span class="uvk">uvk</span> further supports the processing of
+[inline script metadata](https://packaging.python.org/en/latest/specifications/inline-script-metadata/)
+as the kernel starts up for a given notebook,
+choosing a suitable Python interpreter and populating the isolated environment with all
+packages the notebook's computations requires.
 Thus, notebooks authored to use the <span class="uvk">uvk</span> kernel directly
 can be shared without any other accompanying artifact:
 they become self-contained executable documents.

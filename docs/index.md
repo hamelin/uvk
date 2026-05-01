@@ -1,9 +1,3 @@
-<style>
-span.sans {
-  font-family: sans-serif;
-}
-</style>
-
 <div style="display: flex; flex-flow: row nowrap; justify-content: flex-start; align-items: center; gap: 10pt;">
 <div style="flex: 0 1 content; width: 1in;">
   <img src="images/logo.svg"/>
@@ -28,12 +22,13 @@ on Jupyterhub.
 First off, deploy the <span class="sans">uvk</span> kernel where Jupyter can see it.
 *(Wait, what's [uvx](https://docs.astral.sh/uv/concepts/tools/)?)*
 
-| Operating system                      | Quickstart command |
-|:--------------------------------------|:-------------------|
-| Microsoft Windows                     | `uvx --from=jupyterlab --with=uvk cmd /c "uvk --sys-prefix && jupyter lab"` |
-| MacOS, GNU/Linux,<br>\*BSD, UNIX etc. | `uvx --from=jupyterlab --with=uvk $SHELL -c "uvk --sys-prefix && jupyter lab"` |
+```sh
+uvx --with uvk jupyter lab
+```
 
-Now run through the [tutorial notebook](Tutorial.ipynb) to see what this kernel can do for you.
+You should see the [<span class="uvk">uvk</span> icon](images/logo.svg) as a kernel labelled **Python 3 (uvk)**
+in addition to the usual IPython kernel (`ipykernel`).
+Now run through the [tutorial notebook](tutorial.ipynb) to see what this kernel can do for you.
 
 ## Why use this?
 
@@ -82,9 +77,10 @@ Now run through the [tutorial notebook](Tutorial.ipynb) to see what this kernel 
 
 - [About <span class="sans">uvk</span>](about.md)
 - Full [installation](install.md) instructions
-- [Tutorial](Tutorial.ipynb)
+- [Tutorial](tutorial.ipynb)
 - [How to?](howto/index.md) guides and recipes
-  <!-- - [Deep dives](deepdives/index.md) into the details -->
-- [Tool and API reference](reference/index.md)
+- Tool and API reference:
+    - [<span class="uvk">uvk</span> IPython extension](reference/ext.ipynb) for managing a notebook's metadata
+    - [`uvk` command-line utility](reference/cli.md) for [installing](reference/cli.md#install) and [launching](reference/cli.md#launch) new <span class="uvk">uvk</span> kernels
 
 Copyright 2026 Benoit Hamelin.

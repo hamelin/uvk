@@ -3,16 +3,17 @@ theme: readthedocs
 nav:
   - About: about.md
   - Installation: install.md
-  - Tutorial: Tutorial.ipynb
+  - Tutorial: tutorial.ipynb
   - How to?:
     - Author a notebook that is easiest to share: howto/notebook-easiest-to-share.md
-    - uvk kernels for multiple Python interpreters: howto/uvk-multiple-pythons.md
   - Reference:
-    - The uvk command-line tool: reference/uvk_cli.md
-    - The uvk IPython extension: reference/uvk_ext.md
+    - IPython extension: reference/ext.ipynb
+    - Command-line tool: reference/cli.md
   - Everything else:
     - GitHub: https://github.com/hamelin/uvk/
     - License (MIT): license.md
+extra_css:
+  - style.css
 markdown_extensions:
   - admonition
   - toc:
@@ -21,6 +22,12 @@ plugins:
   - mkdocs-jupyter:
       ignore_h1_titles: true
       execute: false
+      no_prompt: true
+      remove_tag_config:
+        remove_input_tags:
+          - hide-code
+        remove_prompt_tags:
+          - hide-code
   - mkdocstrings:
       handlers:
         python:

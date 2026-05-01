@@ -48,5 +48,5 @@ banner/%:
 docs/build:
 	$(UV_MKDOCS) build
 
-docs/serve:
+docs/serve: uvk-dev
 	$(UV_MKDOCS) serve --livereload --strict --watch src/uvk $(and $(address),--dev-addr $(address))
