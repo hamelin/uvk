@@ -15,7 +15,7 @@ from uvk.launch import (
 )
 from uvk.parse import ScriptMetadataParseError
 
-from . import make_project, notebook, NotebookOnDisk
+from . import make_project, notebook
 
 
 @notebook
@@ -100,70 +100,60 @@ def name2notebook(
         ),
         (
             "no_dependency_311",
-            dedent(
-                """\
-                # /// script
-                # requires-python = ">=3.11"
-                # dependencies = []
-                # ///
-                """.rstrip()
-            ),
+            """\
+            # /// script
+            # requires-python = ">=3.11"
+            # dependencies = []
+            # ///
+            """,
         ),
         (
             "typical",
-            dedent(
-                """\
-                # /// script
-                # requires-python = ">=3.13"
-                # dependencies = [
-                #     "lark>=1.3.1",
-                #     "requests>=2.33.1",
-                # ]
-                # ///
-                """,
-            ).rstrip(),
+            """\
+            # /// script
+            # requires-python = ">=3.13"
+            # dependencies = [
+            #     "lark>=1.3.1",
+            #     "requests>=2.33.1",
+            # ]
+            # ///
+            """,
         ),
         (
             "last_cell_with_uv_args",
-            dedent(
-                """\
-                # /// script
-                # requires-python = ">=3.13"
-                # dependencies = [
-                #     "lark>=1.3.1",
-                #     "requests>=2.33.1",
-                # ]
-                #
-                # [tool.uvk]
-                # uv_args = ["--with-editable", "../my-package"]
-                # ///
-                """.rstrip()
-            ),
+            """\
+            # /// script
+            # requires-python = ">=3.13"
+            # dependencies = [
+            #     "lark>=1.3.1",
+            #     "requests>=2.33.1",
+            # ]
+            #
+            # [tool.uvk]
+            # uv_args = ["--with-editable", "../my-package"]
+            # ///
+            """,
         ),
         (
             "metadata_multiple",
-            dedent(
-                """\
-                # This is the metadata.
-                # /// script
-                # requires-python = ">=3.11"
-                # dependencies = []
-                # ///
-                """.rstrip()
-            ),
+            """\
+            # This is the metadata.
+            # /// script
+            # requires-python = ">=3.11"
+            # dependencies = []
+            # ///
+            """,
         ),
         (
             "metadata_multiple_top_skipped",
-            dedent(
-                """\
-                # /// script
-                # dependencies = [
-                #     "requests>=2.33.1",
-                # ]
-                #
-                # ///
-                """.rstrip()
-            ),
+            """\
+            # /// script
+            # dependencies = [
+            #     "requests>=2.33.1",
+            # ]
+            #
+            # ///
+            """,
         ),
         (
             "metadata_in_raw_cell",
@@ -171,26 +161,26 @@ def name2notebook(
         ),
         (
             "metadata_after_raw_cell",
-            dedent(
-                """\
-                # /// script
-                # requires-python = ">=3.13"
-                # dependencies = [
-                #     "requests>=2.33.1",
-                # ]
-                #
-                # [tool.uvk]
-                # uv_args = ["--with-editable", "../my-package"]
-                # ///
-                """.rstrip()
-            ),
+            """\
+            # /// script
+            # requires-python = ">=3.13"
+            # dependencies = [
+            #     "requests>=2.33.1",
+            # ]
+            #
+            # [tool.uvk]
+            # uv_args = ["--with-editable", "../my-package"]
+            # ///
+            """,
         ),
     ],
 )
 def test_extract_script_metadata_valid(
     expected: str, name: str, name2notebook: dict[str, NotebookNode]
 ) -> None:
-    assert expected == extract_script_metadata(name2notebook[name].notebook)
+    if isinstance(expected, str):
+        expected = dedent(expected).rstrip()
+    assert expected == extract_script_metadata(name2notebook[name])
 
 
 @pytest.mark.parametrize(
@@ -205,7 +195,7 @@ def test_extract_script_metadata_error(
     expected: Type[Exception], name: str, name2notebook: dict[str, NotebookNode]
 ) -> None:
     with pytest.raises(expected):
-        extract_script_metadata(name2notebook[name].notebook)
+        extract_script_metadata(name2notebook[name])
 
 
 @pytest.fixture
@@ -215,12 +205,12 @@ def no_session_name() -> None:
 
 
 @pytest.fixture
-def name2path(metadata_multiple: NotebookOnDisk, no_metadata: NotebookOnDisk) -> dict[str, str]:
+def name2path(metadata_multiple: NotebookNode, no_metadata: NotebookNode) -> dict[str, str]:
     return {
         "": "",
         "does not exist": "does not exist",
-        "metadata_multiple": str(metadata_multiple.path),
-        "no_metadata": str(no_metadata.path),
+        "metadata_multiple": str(metadata_multiple.metadata._path_),
+        "no_metadata": str(no_metadata.metadata._path_),
     }
 
 

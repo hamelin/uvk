@@ -97,7 +97,8 @@ def get_path_project(source: Path) -> Path | None:
 def get_cmdline_uv(script_metadata: str, path_project: Path | None) -> list[str]:
     try:
         metadata = parse_script_metadata(script_metadata) or {}
-    except (ScriptMetadataParseError, TOMLDecodeError):
+    except (ScriptMetadataParseError, TOMLDecodeError) as err:
+        LOG.error(f"Problem with script metadata: {err}")
         metadata = {}
 
     metadata_uvk = metadata.get("tool", {}).get("uvk", {})
