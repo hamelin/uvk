@@ -1,530 +1,374 @@
-from collections.abc import Iterator
-from contextlib import contextmanager
-from dataclasses import dataclass
-from jupyter_client.manager import (
-    BlockingKernelClient,
-    KernelManager,
-    start_new_kernel,
-)
-from jupyter_client.kernelspec import KernelSpecManager
-from pathlib import Path
-import pytest  # noqa
-import subprocess as sp
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+import pytest
 import sys
 from textwrap import dedent
-import tomllib
-from uuid import uuid4
-from uv import find_uv_bin
+from typing import Protocol
 
-from uvk.install import prepare_kernelspec
-
-
-@pytest.fixture(scope="session")
-def kernelspec() -> Iterator[str]:
-    """
-    This is session-scoped since it is only used by a session-scoped kernel instantiation.
-    """
-    mgr = KernelSpecManager()
-    name = f"uvk-{uuid4()}"
-    with prepare_kernelspec(name, "uvk unit test") as dir_kernelspec:
-        d = mgr.install_kernel_spec(str(dir_kernelspec), name, prefix=sys.prefix)
-
-    yield name
-
-    mgr.remove_kernel_spec(name)
-    assert not Path(d).is_dir()
+from uvk import (
+    Add,
+    Arguments,
+    as_script_metadata,
+    Command,
+    current_looks_like_name_argument,
+    Metadata,
+    parse_args,
+    Remove,
+    SetPython,
+    UvArgs,
+    uvk,
+    UvkArgumentError,
+    UvkHelp,
+)
+from uvk.parse import parse_script_metadata
 
 
-@dataclass
-class KernelManagerAndClient:
-    manager: KernelManager
-    client: BlockingKernelClient
+@pytest.mark.parametrize("args,expected", [(Arguments(["asdf"]), False), (Arguments([]), True)])
+def test_arguments_at_end(expected: bool, args: Arguments) -> None:
+    assert expected == args.at_end
 
 
-@pytest.fixture(scope="session")
-def kernel(kernelspec: str) -> Iterator[KernelManagerAndClient]:
-    """\
-    Sets up the kernel manager and client that gets reused for uvk kernel tests. A previous simpler
-    implementation had this fixture regularly-scoped, creating a whole new kernel for every test.
-    However, Jupyter kernel managers truly expect to run only once in their process' life cycle,
-    deferring the clean-up of various resources to a `atexit` handler. That implementation would
-    thus "leak" file handles (wrapped in IP sockets), causing a **Too many open files** (errno 24)
-    after enough tests involving the fixture.
+def test_arguments_current() -> None:
+    assert Arguments(["asdf", "qwerty"]).current == "asdf"
 
-    The current implementation, instead, keeps the same kernel manager for all unit tests,
-    but explicitly restarts the kernel at the start of every unit test that requires the kernel
-    client. Kernel restarting is a common operation for kernel managers that does not leak open
-    files.
 
-    This restarting approach explains why the first unit test requiring the kernel client fixture
-    takes so long to run: it starts a kernel process _twice_.
-    """
-    km, kc = start_new_kernel(kernel_name=kernelspec)
-    yield KernelManagerAndClient(manager=km, client=kc)
-    km.shutdown_kernel()
+def test_arguments_current_at_end() -> None:
+    with pytest.raises(ValueError):
+        print(Arguments([]).current)
+
+
+@pytest.mark.parametrize(
+    "args,expected",
+    [
+        (Arguments(["asdf", "qwer"]), Arguments(["qwer"])),
+        (Arguments(["asdf"]), Arguments([])),
+    ],
+)
+def test_arguments_advance(expected: Arguments, args: Arguments) -> None:
+    assert expected == args.advance()
+
+
+def test_arguments_advance_at_end() -> None:
+    with pytest.raises(ValueError):
+        Arguments(["asdf"]).advance().advance()
+
+
+@pytest.mark.parametrize(
+    "args,expected",
+    [
+        (Arguments(["asdf"]), False),
+        (Arguments(["-p"]), True),
+        (Arguments(["--asdf"]), True),
+    ],
+)
+def test_current_looks_like_name_argument(expected: bool, args: Arguments) -> None:
+    assert expected == current_looks_like_name_argument(args)
+
+
+@pytest.mark.parametrize(
+    "args,expected",
+    [
+        ("--python >=3.11", [SetPython(">=3.11")]),
+        ('-p ">= 3.11, < 3.13, != 3.12.2"', [SetPython("!=3.12.2,<3.13,>=3.11")]),
+        ("-a requests", [Add(["requests"])]),
+        (
+            '--add requests==2.33.1 "lark >1.0"',
+            [Add(["requests==2.33.1", "lark>1.0"])],
+        ),
+        ("-a -p >=3.13", [Add([]), SetPython(">=3.13")]),
+        ("-r asdf", [Remove(["asdf"])]),
+        ("--remove asdf qwerty>2.2", [Remove(["asdf", "qwerty"])]),
+        ("-r", [Remove([])]),
+        ("-r -a", [Remove([]), Add([])]),
+        ("--remove zxcv -p >=3.13", [Remove(["zxcv"]), SetPython(">=3.13")]),
+        ("-A --isolated -p 3.11", [UvArgs(["--isolated", "-p", "3.11"])]),
+        (
+            "--uv-args --no-cache-dir -- --python >=3.11",
+            [UvArgs(["--no-cache-dir"]), SetPython(">=3.11")],
+        ),
+        ("-A", [UvArgs([])]),
+        ("-A -- -a", [UvArgs([]), Add([])]),
+        ("-a asdf -A -Z", [Add(["asdf"]), UvArgs(["-Z"])]),
+    ],
+)
+def test_parse_args_success(expected: list[Command], args: str) -> None:
+    assert expected == parse_args(args)
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        "--asdf",
+        "--python",
+        "--python asdf",
+        "--python --add",
+        "--add asdf <5",
+        "-a asdf -Z",
+    ],
+)
+def test_commands_parse_error(args: str) -> None:
+    with pytest.raises(UvkArgumentError):
+        parse_args(args)
+
+
+@pytest.mark.parametrize("args", ["-h", "--help", "-a asdf -h -p >=3.11"])
+def test_commands_parse_help(args: str) -> None:
+    with pytest.raises(UvkHelp):
+        parse_args(args)
+
+
+@pytest.mark.parametrize(
+    "metadata,expected",
+    [
+        (
+            {},
+            """\
+            # /// script
+            # ///
+            """,
+        ),
+        (
+            {"require-python": ">=3.11"},
+            """\
+            # /// script
+            # require-python = ">=3.11"
+            # ///
+            """,
+        ),
+        (
+            {"require-python": "<3.13", "dependencies": []},
+            """\
+            # /// script
+            # require-python = "<3.13"
+            # dependencies = []
+            # ///
+            """,
+        ),
+        (
+            {"dependencies": ["asdf"]},
+            """\
+            # /// script
+            # dependencies = ["asdf"]
+            # ///
+            """,
+        ),
+        (
+            {"dependencies": ["asdf", "qwer"]},
+            """\
+            # /// script
+            # dependencies = ["asdf", "qwer"]
+            # ///
+            """,
+        ),
+        (
+            {"tool": {"uvk": {"uv-args": ["--no-cache-dir", "--compile-bytecode"]}}},
+            """\
+            # /// script
+            # [tool.uvk]
+            # uv-args = ["--no-cache-dir", "--compile-bytecode"]
+            # ///
+            """,
+        ),
+        (
+            {
+                "require-python": ">=3.11",
+                "tool": {"uvk": {"uv-args": []}},
+            },
+            """\
+            # /// script
+            # require-python = ">=3.11"
+            # 
+            # [tool.uvk]
+            # uv-args = []
+            # ///
+            """,
+        ),
+    ],
+)
+def test_as_script_metadata(expected: str, metadata: Metadata) -> None:
+    assert dedent(expected).rstrip() == as_script_metadata(metadata)
 
 
 @pytest.fixture
-def client_kernel(kernel: KernelManagerAndClient) -> BlockingKernelClient:
-    kernel.manager.restart_kernel()
-    return kernel.client
-
-
-ResultExec = dict
-Outputs = dict[str, list[str]]
-
-
-def execute(client: BlockingKernelClient, code: str) -> tuple[ResultExec, Outputs]:
-    outputs: Outputs = {}
-
-    def store_output(msg):
-        if msg["msg_type"] == "stream":
-            outputs.setdefault(msg["content"].get("name", "unknown"), []).append(
-                msg["content"].get("text", "")
-            )
-        elif msg["msg_type"] == "display_data":
-            for mime_type, content in msg.get("content", {}).get("data", {}).items():
-                outputs.setdefault(mime_type, []).append(content)
-
-    r = client.execute_interactive(code, output_hook=store_output)
-    return r, {
-        stream: "\n".join([chunk.strip() for chunk in chunks]).strip().splitlines()
-        for stream, chunks in outputs.items()
+def meta1() -> Metadata:
+    return {
+        "require-python": ">=3.14",
+        "dependencies": [
+            "numpy",
+            "pandas<3",
+        ],
     }
 
 
-@pytest.mark.skip
-def test_client_hello(client_kernel: BlockingKernelClient) -> None:
-    _, outputs = execute(client_kernel, "print('hello world')")
-    assert outputs == {"stdout": ["hello world"]}
+@pytest.mark.parametrize(
+    "command,expected",
+    [
+        (
+            SetPython(">=3.11"),
+            {"require-python": ">=3.11", "dependencies": ["numpy", "pandas<3"]},
+        ),
+        (
+            Add(["requests", "pandas<=2.3", "matplotlib"]),
+            {
+                "require-python": ">=3.14",
+                "dependencies": ["matplotlib", "numpy", "pandas<=2.3", "requests"],
+            },
+        ),
+        (
+            Remove(["pandas", "requests"]),
+            {"require-python": ">=3.14", "dependencies": ["numpy"]},
+        ),
+        (
+            UvArgs(["--no-cache-dir"]),
+            {
+                "require-python": ">=3.14",
+                "dependencies": ["numpy", "pandas<3"],
+                "tool": {"uvk": {"uv-args": ["--no-cache-dir"]}},
+            },
+        ),
+    ],
+)
+def test_command_exec(expected: Metadata, meta1: Metadata, command: Command) -> None:
+    command.execute(meta1)
+    assert expected == meta1
 
 
-@pytest.mark.skip
-def test_load_ext(client_kernel: BlockingKernelClient) -> None:
-    def magics(kind: str) -> set[str]:
-        _, outputs = execute(
-            client_kernel,
-            f"""
-            for m in get_ipython().magics_manager.magics["{kind}"].keys():
-                print(m)
-            """,
-        )
-        return set(outputs["stdout"])
+@dataclass
+class MockShell:
+    next_inputs: list[tuple[str, bool]] = field(default_factory=list)
 
-    assert not ({"require_python", "dependencies"} <= magics("line"))
-    assert not ({"script_metadata", "dependencies"} <= magics("cell"))
-    client_kernel.execute_interactive("%load_ext uvk")
-    assert {"require_python", "dependencies"} <= magics("line")
-    assert {"script_metadata", "dependencies"} <= magics("cell")
+    def set_next_input(self, ni: str, replace: bool = False) -> None:
+        self.next_inputs.append((ni, replace))
+
+    def check_inputs(
+        self, expected: Mapping[int, tuple[Metadata, bool]], num: int | None = None
+    ) -> None:
+        if num is not None:
+            assert num == len(self.next_inputs)
+        for i, (metadata_expected, replace_expected) in expected.items():
+            assert i < len(self.next_inputs)
+            metadata_, replace = self.next_inputs[i]
+            assert metadata_expected == parse_script_metadata(metadata_)
+            assert replace_expected == replace
 
 
 @pytest.fixture
-def client_uvk(client_kernel: BlockingKernelClient) -> BlockingKernelClient:
-    client_kernel.execute_interactive("%load_ext uvk")
-    return client_kernel
+def shell() -> MockShell:
+    return MockShell()
 
 
-@pytest.mark.skip
-def test_require_python_satisfied(client_uvk: BlockingKernelClient) -> None:
-    major, minor, *_ = sys.version_info
-    r, outputs = execute(
-        client_uvk,
-        f"""
-        %require_python >={major}.{minor}
-        print(5)
-        """,
+class MagicUvk(Protocol):
+    def __call__(self, line: str, cell: str | None = None) -> None: ...
+
+
+@pytest.fixture
+def magic_uvk(shell: MockShell) -> MagicUvk:
+    return uvk(shell)  # type: ignore
+
+
+def test_uvk_alone(magic_uvk: MagicUvk, shell: MockShell) -> None:
+    magic_uvk("")
+    shell.check_inputs(
+        {
+            0: (
+                {
+                    "require-python": f">={sys.version_info.major}.{sys.version_info.minor}",
+                    "dependencies": [],
+                },
+                False,
+            )
+        },
     )
-    assert r.get("content", {}).get("status", "") == "ok"
-    assert outputs["stdout"] == ["5"]
 
 
-@pytest.mark.skip
-def test_require_python_not_satisfied(client_uvk: BlockingKernelClient) -> None:
-    major, minor, micro, *_ = sys.version_info
-    r, outputs = execute(
-        client_uvk,
-        f"""
-        %require_python <{major}.{minor}.{micro}
-        print(5)
-        """,
-    )
-    assert r.get("content", {}).get("status", "") == "error"
-    assert r.get("content", {}).get("ename", "") == "PythonRequirementNotSatisfied"
-    assert not outputs
-
-
-@pytest.mark.skip
-def test_require_python_bad_specifier(client_uvk: BlockingKernelClient) -> None:
-    r, outputs = execute(
-        client_uvk,
-        """
-        %require_python asdf
-        print(5)
-        """,
-    )
-    assert r.get("content", {}).get("status", "") == "error"
-    assert r.get("content", {}).get("ename", "") == "InvalidSpecifier"
-    assert not outputs
-
-
-def imports2cell(*imports: str) -> str:
-    return "\n".join([*[f"import {imp}" for imp in imports], "print(5)"])
-
-
-@pytest.mark.skip
-@pytest.mark.parametrize(
-    "imports,expected_raw",
-    [
-        (
-            (),
-            """\
-            print(5)
-            """,
-        ),
-        (
-            ("pytest",),
-            """\
-            import pytest
-            print(5)
-            """,
-        ),
-        (
-            ("numpy as np", "joblib as jl"),
-            """\
-            import numpy as np
-            import joblib as jl
-            print(5)
-            """,
-        ),
-    ],
-)
-def test_imports2cell(imports: tuple[str, ...], expected_raw: str):
-    assert dedent(expected_raw) == imports2cell(*imports)
-
-
-def import_np_jl(client: BlockingKernelClient) -> tuple[ResultExec, Outputs]:
-    return execute(client, imports2cell("numpy as np", "joblib as jl"))
-
-
-def check_import_np_jl_fails(client: BlockingKernelClient) -> None:
-    r, outputs = import_np_jl(client)
-    assert r.get("content", {}).get("status", "") == "error"
-    assert r.get("content", {}).get("ename", "") == "ModuleNotFoundError"
-
-
-def check_import_np_jl_succeeds(client: BlockingKernelClient) -> None:
-    r, outputs = import_np_jl(client)
-    assert r.get("content", {}).get("status", "") == "ok"
-    assert outputs.get("stdout") == ["5"]
-
-
-@pytest.mark.skip
-@pytest.mark.parametrize(
-    "dependencies_invocation",
-    [
-        """\
-        %dependencies numpy scipy>1.11 scikit-learn==1.8.0
-        """,
-        """\
-        %%dependencies
-        numpy
-        scikit-learn==1.8.0
-        scipy>1.11
-        """,
-    ],
-)
-def test_dependencies(client_uvk: BlockingKernelClient, dependencies_invocation: str) -> None:
-    check_import_np_jl_fails(client_uvk)
-    _, outputs = execute(
-        client_uvk,
-        dedent(dependencies_invocation),
-    )
-    assert "text/markdown" not in outputs
-    check_import_np_jl_succeeds(client_uvk)
-
-
-@pytest.mark.skip
-@pytest.mark.parametrize(
-    "dependencies_invocation",
-    [
-        """
-        %%dependencies numpy pandas
-        scipy>1.11
-        scikit-learn==1.8.0
-        """,
-        """
-        %%dependencies
-        numpy    \tpandas
-        \t\tscipy>1.11
-            scikit-learn==1.8.0
-        """,
-    ],
-)
-def test_dependencies_normalized(
-    client_uvk: BlockingKernelClient, dependencies_invocation: str
-) -> None:
-    check_import_np_jl_fails(client_uvk)
-    _, outputs = execute(
-        client_uvk,
-        dedent(dependencies_invocation),
-    )
-    assert [
-        (
-            "Requirement specifications are irregular. They will be processed as "
-            "if they had been supplied in the following form:"
-        ),
-        "",
-        "```",
-        "%%dependencies",
-        "numpy",
-        "pandas",
-        "scipy>1.11",
-        "scikit-learn==1.8.0",
-        "```",
-    ] == outputs.get("text/markdown", [])
-    check_import_np_jl_succeeds(client_uvk)
-
-
-@pytest.mark.skip
-def test_script_metadata_python_unsatisfied(client_uvk: BlockingKernelClient) -> None:
-    r, _ = execute(
-        client_uvk,
-        dedent("""\
-            %%script_metadata
-            # /// script
-            # require-python = "==3.8.4"
-            # ///
-            """),
-    )
-    content = r.get("content", {})
-    assert content.get("status", "") == "error"
-    assert content.get("ename", "") == "PythonRequirementNotSatisfied"
-
-
-@pytest.mark.skip
-@pytest.mark.parametrize("extraneous", [[], ["", "  ", "extraneous"]])
-def test_script_metadata_add_dependencies(
-    client_uvk: BlockingKernelClient, extraneous: list[str]
-) -> None:
-    check_import_np_jl_fails(client_uvk)
-    r, outputs = execute(
-        client_uvk,
-        dedent(
-            "\n".join(
-                [
-                    dedent(
-                        """\
-                        %%script_metadata
-                        # /// script
-                        # require-python = ">=3.10"
-                        # dependencies = [
-                        #     "numpy",
-                        #     "scipy>1.11",
-                        #     "scikit-learn==1.8.0",
-                        # ]
-                        # ///
-                        """.rstrip(),
-                    ),
-                    *[f"# {line}" for line in extraneous],
-                ]
+def test_uvk_line(magic_uvk: MagicUvk, shell: MockShell) -> None:
+    magic_uvk('-a numpy requests -p "== 3.12" --uv-args --no-cache-dir')
+    shell.check_inputs(
+        {
+            0: (
+                {
+                    "require-python": "==3.12",
+                    "dependencies": ["numpy", "requests"],
+                    "tool": {"uvk": {"uv-args": ["--no-cache-dir"]}},
+                },
+                False,
             ),
-        ),
+        }
     )
-    assert r.get("content", {}).get("status", "") == "ok"
-    if extraneous:
-        assert any("trailing lines" in line for line in outputs.get("stderr", []))
-    check_import_np_jl_succeeds(client_uvk)
 
 
-@pytest.mark.skip
-def test_uv_magic_pip_install(client_uvk: BlockingKernelClient) -> None:
-    check_import_np_jl_fails(client_uvk)
-    r, _ = execute(
-        client_uvk,
+def test_uvk_cell(magic_uvk: MagicUvk, shell: MockShell) -> None:
+    magic_uvk(
+        "-r pandas -a polars duckdb",
         dedent(
             """\
-            %uv pip install numpy scipy>1.11 scikit-learn==1.8.0
-            """
-        ),
+            # /// script
+            # require-python = ">=3.13"
+            # dependencies = [
+            #     "numpy",
+            #     "pandas",
+            #     "requests",
+            # ]
+            # 
+            # [tool.uvk]
+            # uv-args = ["--index", "asdf"]
+            # ///
+            """,
+        ).rstrip(),
     )
-    assert r.get("content", {}).get("status", "") == "ok"
-    check_import_np_jl_succeeds(client_uvk)
-
-
-@pytest.mark.skip
-def test_uv_magic_run(client_uvk: BlockingKernelClient) -> None:
-    r, outputs = execute(
-        client_uvk,
-        dedent(
-            """\
-            %uv run python -c 'import os; print(os.environ["VIRTUAL_ENV"])'
-            import os
-            print(os.environ["VIRTUAL_ENV"])
-            """
-        ),
-    )
-    assert r.get("content", {}).get("status", "") == "ok"
-    stdout = outputs["stdout"]
-    assert len(stdout) >= 2
-    assert stdout[0] == stdout[1]
-
-
-def check_suffix_uv_interromark(client_uvk: BlockingKernelClient, suffix_expected: str) -> None:
-    r, _ = execute(client_uvk, "%uv?\n")
-    content = r.get("content", {})
-    assert content.get("status", "") == "ok"
-    output = "\n".join(
-        element.get("data", {}).get("text/plain", "") for element in content.get("payload", [])
-    )
-    assert output.strip().endswith(suffix_expected)
-
-
-@pytest.mark.skip
-def test_restore_uv_magick(client_uvk: BlockingKernelClient) -> None:
-    check_suffix_uv_interromark(client_uvk, "uvk/__init__.py")
-    r, _ = execute(client_uvk, "%restore_uv\n")
-    assert r.get("content", {}).get("status", "") == "ok"
-    check_suffix_uv_interromark(client_uvk, "IPython/core/magics/packaging.py")
-
-
-@pytest.fixture
-def key_dep() -> str:
-    return "lark"
-
-
-def make_project(home: Path, key_dep: str) -> None:
-    sp.run(
-        [
-            find_uv_bin(),
-            "init",
-            "--name",
-            home.name,
-            "--python",
-            sys.executable,
-            "--lib",
-            "--no-description",
-            "--author-from",
-            "none",
-            "--vcs",
-            "none",
-            "--build-backend",
-            "setuptools",
-            "--no-readme",
-            "--no-pin-python",
-            str(home),
-        ],
-    ).check_returncode()
-    sp.run([find_uv_bin(), "add", "--project", str(home), key_dep], cwd=home).check_returncode()
-    sp.run(
-        [find_uv_bin(), "version", "--project", str(home), "0.0.2"], cwd=home
-    ).check_returncode()
-
-
-@pytest.fixture
-def project_haha(tmp_path: Path, key_dep: str) -> Path:
-    make_project(tmp_path / "haha", key_dep=key_dep)
-    return tmp_path / "haha"
-
-
-@contextmanager
-def import_before_after_project(
-    client_uvk: BlockingKernelClient,
-    project: Path,
-    name_import: str,
-) -> Iterator[None]:
-    r, _ = execute(client_uvk, f"import {name_import}\n")
-    assert r.get("content", {}).get("status", "") == "error", (
-        f"Package {name_import} already importable before running %project"
-    )
-    r, _ = execute(client_uvk, f"%project {project}\n")
-    assert r.get("content", {}).get("status", "") == "ok"
-    yield None
-    r, _ = execute(client_uvk, f"import {name_import}\n")
-    assert r.get("content", {}).get("status", "") == "ok", (
-        f"Package {name_import} NOT importable after running %project"
+    shell.check_inputs(
+        {
+            0: (
+                {
+                    "require-python": ">=3.13",
+                    "dependencies": ["duckdb", "numpy", "polars", "requests"],
+                    "tool": {"uvk": {"uv-args": ["--index", "asdf"]}},
+                },
+                True,
+            )
+        }
     )
 
 
-@pytest.mark.skip
-def test_project_haha(client_uvk: BlockingKernelClient, project_haha: Path, key_dep: str) -> None:
-    with import_before_after_project(client_uvk, project_haha, key_dep):
-        pass
-
-
-@pytest.mark.skip
-def test_project_add_dependency(
-    client_uvk: BlockingKernelClient, project_haha: Path, key_dep: str
-) -> None:
-    with import_before_after_project(client_uvk, project_haha, "xonsh"):
-        r, _ = execute(client_uvk, "%uv add xonsh\n")
-        assert r.get("content", {}).get("status", "") == "ok"
-        with (project_haha / "pyproject.toml").open(mode="rb") as file:
-            pyproject = tomllib.load(file)
-            dependencies = pyproject.get("project", {}).get("dependencies", [])
-            for name in [key_dep, "xonsh"]:
-                assert any(dep.startswith(name) for dep in dependencies), (
-                    f"Can't find a dependency for package {name}"
-                )
-
-
-@pytest.mark.skip
-def test_project_add_remove_breaks_stuff(
-    client_uvk: BlockingKernelClient,
-    project_haha: Path,
-    key_dep: str,
-) -> None:
-    r, output = execute(
-        client_uvk,
-        dedent(
-            """\
-            from pathlib import Path
-            import sys
-            prefix = Path(sys.prefix)
-            print(sys.prefix)
-            assert (prefix / "bin" / "uv").is_file()
-            import uv
-            print(uv.find_uv_bin())
-            """
-        ),
+def test_uvk_composition(magic_uvk: MagicUvk, shell: MockShell) -> None:
+    magic_uvk('-p ">= 3.11"')
+    magic_uvk(
+        "-A --no-cache-dir -- -a numpy scikit-learn",
+        dedent("""\
+            # /// script
+            # require-python = ">=3.11"
+            # ///
+        """).rstrip(),
     )
-    assert r.get("content", {}).get("status", "") == "ok"
-    prefix, path_uv = output["stdout"]
-    assert Path(path_uv) == Path(prefix) / "bin" / "uv"
-
-    r, _ = execute(client_uvk, f"%project {project_haha}\n")
-    assert r.get("content", {}).get("status", "") == "ok"
-    r, _ = execute(client_uvk, "%uv add aiohttp pandas")
-    assert r.get("content", {}).get("status", "") == "ok"
-    r, _ = execute(client_uvk, f"%uv remove {key_dep}\n")
-    assert r.get("content", {}).get("status", "") == "ok"
-    r, output = execute(client_uvk, "print(uv.find_uv_bin())")
-    content = r.get("content", {})
-    match content.get("status", ""):
-        case "error":
-            assert content.get("ename", "") == "UvNotFound"
-        case "ok":
-            # uv is found from some other source than current environment.
-            assert len(output.get("stdout", [])) == 1
-            assert output["stdout"][0].strip() != path_uv
-        case _:
-            pytest.fail("Unexpected outcome of find_uv_bin()")
-
-
-@pytest.mark.skip
-def test_project_import_package(client_uvk: BlockingKernelClient, project_haha: Path) -> None:
-    with import_before_after_project(client_uvk, project_haha, "haha"):
-        pass
-    r, output = execute(client_uvk, "print(haha.hello())")
-    assert r.get("content", {}).get("status", "") == "ok"
-    assert "Hello from haha!" == "\n".join(output["stdout"]).strip()
-
-
-@pytest.mark.skip
-def test_project_immutable_once_set(
-    client_uvk: BlockingKernelClient,
-    project_haha: Path,
-    key_dep: str,
-) -> None:
-    with import_before_after_project(client_uvk, project_haha, key_dep):
-        r, _ = execute(client_uvk, "%project\n")
-        assert r.get("content", {}).get("status", "") == "error"
+    magic_uvk(
+        "-A",
+        dedent("""\
+            # /// script
+            # require-python = ">=3.11"
+            # dependencies = ["numpy", "scikit-learn"]
+            # [tool.uvk]
+            # uv-args = ["--no-cache-dir"]
+            # ///
+        """).rstrip(),
+    )
+    shell.check_inputs(
+        {
+            0: ({"require-python": ">=3.11", "dependencies": []}, False),
+            1: (
+                {
+                    "require-python": ">=3.11",
+                    "dependencies": ["numpy", "scikit-learn"],
+                    "tool": {"uvk": {"uv-args": ["--no-cache-dir"]}},
+                },
+                True,
+            ),
+            2: (
+                {
+                    "require-python": ">=3.11",
+                    "dependencies": ["numpy", "scikit-learn"],
+                    "tool": {"uvk": {"uv-args": []}},
+                },
+                True,
+            ),
+        }
+    )

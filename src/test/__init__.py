@@ -3,7 +3,6 @@ from importlib.resources import as_file, files
 from importlib.resources.abc import Traversable
 from pathlib import Path
 import nbformat
-import os
 import pytest
 import subprocess as sp
 import sys
@@ -41,35 +40,35 @@ def notebook(_fn_: FunctionType) -> Callable[[], Iterator[nbformat.NotebookNode]
     return pytest.fixture(_fixture_notebook)
 
 
-def notebook_run(_fn_: FunctionType) -> Callable[[Path, str], nbformat.NotebookNode]:
-    def _fixture_notebook(tmp_path: Path, kernelspec: str) -> nbformat.NotebookNode:
-        source = load_notebook(get_notebook_resource(_fn_.__name__))
-        source["metadata"]["kernelspec"]["name"] = kernelspec
-        path_source = tmp_path / "source.ipynb"
-        path_source.write_text(nbformat.writes(source, nbformat.NO_CONVERT), encoding="utf-8")
-        cp = sp.run(
-            [
-                find_uv_bin(),
-                "run",
-                "--dev",
-                "jupyter",
-                "nbconvert",
-                "--stdout",
-                "--to",
-                "notebook",
-                "--execute",
-                "--allow-errors",
-                str(path_source.resolve()),
-            ],
-            encoding="utf-8",
-            stdout=sp.PIPE,
-            env=os.environ | {"JPY_SESSION_NAME": str(path_source.resolve())},
-        )
-        assert cp.returncode == 0
-        return nbformat.reads(cp.stdout, nbformat.NO_CONVERT)
+# def notebook_run(_fn_: FunctionType) -> Callable[[Path, str], nbformat.NotebookNode]:
+#     def _fixture_notebook(tmp_path: Path, kernelspec: str) -> nbformat.NotebookNode:
+#         source = load_notebook(get_notebook_resource(_fn_.__name__))
+#         source["metadata"]["kernelspec"]["name"] = kernelspec
+#         path_source = tmp_path / "source.ipynb"
+#         path_source.write_text(nbformat.writes(source, nbformat.NO_CONVERT), encoding="utf-8")
+#         cp = sp.run(
+#             [
+#                 find_uv_bin(),
+#                 "run",
+#                 "--dev",
+#                 "jupyter",
+#                 "nbconvert",
+#                 "--stdout",
+#                 "--to",
+#                 "notebook",
+#                 "--execute",
+#                 "--allow-errors",
+#                 str(path_source.resolve()),
+#             ],
+#             encoding="utf-8",
+#             stdout=sp.PIPE,
+#             env=os.environ | {"JPY_SESSION_NAME": str(path_source.resolve())},
+#         )
+#         assert cp.returncode == 0
+#         return nbformat.reads(cp.stdout, nbformat.NO_CONVERT)
 
-    _fixture_notebook.__name__ = _fn_.__name__
-    return pytest.fixture(_fixture_notebook)
+#     _fixture_notebook.__name__ = _fn_.__name__
+#     return pytest.fixture(_fixture_notebook)
 
 
 def make_project(home: Path) -> None:
