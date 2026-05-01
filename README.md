@@ -9,7 +9,7 @@ in a Jupyter instance.
 - No need for a whole `pyproject.toml` just to run somebody's notebook once
 - Elegantly integrate Jupyter notebooks into **uv**-driven project development workflows
 
-| [Full documentation](https://uvk.readthedocs.io/) | [Tutorial](https://uvk.readthedocs.io/en/latest/Tutorial/) | [IPython extension](https://uvk.readthedocs.io/en/latest/reference/uvk_ext/) | [CLI reference](https://uvk.readthedocs.io/en/latest/reference/uvk_cli/) |
+| [Full documentation](https://uvk.readthedocs.io/) | [Tutorial](https://uvk.readthedocs.io/en/latest/tutorial/) | [IPython extension](https://uvk.readthedocs.io/en/latest/reference/uvk_ext/) | [CLI reference](https://uvk.readthedocs.io/en/latest/reference/uvk_cli/) |
 |--|--|--|--|
 
 ## Quickstart-and-dirty
@@ -22,8 +22,8 @@ If your Jupyter instance is already running, wait up to a minute for it to poll 
 specs and discover your new **uvk**.
 Otherwise, start Jupyter Lab or Jupyter Notebook.
 
-Check out the [tutorial](https://uvk.readthedocs.io/en/latest/Tutorial/) on how to make the most
-of **uvk** features.
+Check out the [tutorial](https://uvk.readthedocs.io/en/latest/tutorial/)
+on how to easily put together the metadata that will meet your needs.
 
 ## License
 
@@ -44,7 +44,7 @@ If you have ideas for features or projects please get in touch.
 Whether code,
 example notebooks,
 example scripts,
-documentation &mdash; all equally valuable,
+documentation &mdash; all are equally valuable and appreciated,
 so please do not presume you cannot provide something useful to this project.
 To contribute please fork the project, make your changes and submit a pull request.
 We will do our best to work through any issues with you and get your contribution merged in.
