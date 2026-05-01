@@ -4,6 +4,7 @@ from nbformat import NotebookNode, reads as as_notebook, NO_CONVERT
 from nbformat.reader import NotJSONError
 import os
 from pathlib import Path
+import psutil
 import shlex
 import subprocess as sp
 import sys
@@ -66,6 +67,15 @@ def get_script_metadata() -> str:
     return ""
 
 
+def with_uvk() -> list[str]:
+    args_parent = psutil.Process().parent().cmdline()
+    try:
+        i = args_parent.index("--with-editable")
+        return args_parent[i : i + 2]
+    except ValueError:
+        return ["--with", "uvk"]
+
+
 def get_path_project(source: Path) -> Path | None:
     cp = sp.run(
         [find_uv_bin(), "sync", "--check"],
@@ -103,7 +113,7 @@ def get_cmdline_uv(script_metadata: str, path_project: Path | None) -> list[str]
 
     metadata_uvk = metadata.get("tool", {}).get("uvk", {})
     args_uv = metadata_uvk.get("args_uv", [])
-    cmdline = [find_uv_bin(), "run", "--with", "uvk", *args_uv]
+    cmdline = [find_uv_bin(), "run", *with_uvk(), *args_uv]
 
     if path_project and script_metadata:
         LOG.warning(f"Since notebook has script metadata, project path {path_project} is ignored")
