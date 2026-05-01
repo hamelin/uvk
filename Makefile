@@ -38,6 +38,9 @@ jupyterlab:
 ipython:
 	uv run --group proto ipython
 
+uvk-dev: sync/local
+	$(call UV,run,$<) uvk install --name uvk-dev --display-name "uvk dev" --sys-prefix --dev $(realpath .)
+
 banner: banner/local
 banner/%:
 	$(call UV,run,$@) --script banner.py
