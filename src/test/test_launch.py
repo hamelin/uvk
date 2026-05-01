@@ -5,6 +5,7 @@ import pytest  # noqa
 from textwrap import dedent
 from tomllib import TOMLDecodeError
 from typing import Type
+from unittest.mock import patch
 from uv import find_uv_bin
 
 from uvk.launch import (
@@ -319,7 +320,8 @@ def test_get_script_metadata(expected, name, name2path) -> None:
     ],
 )
 def test_cmdline_uv_(expected: list[str], script_metadata: str, path_project: Path | None) -> None:
-    assert expected == get_cmdline_uv(script_metadata, path_project)
+    with patch("uvk.launch.with_uvk", return_value=["--with", "uvk"]):
+        assert expected == get_cmdline_uv(script_metadata, path_project)
 
 
 @pytest.fixture

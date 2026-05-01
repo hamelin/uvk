@@ -4,7 +4,6 @@ from nbformat import NotebookNode, reads as as_notebook, NO_CONVERT
 from nbformat.reader import NotJSONError
 import os
 from pathlib import Path
-import psutil
 import shlex
 import subprocess as sp
 import sys
@@ -12,6 +11,7 @@ from tempfile import NamedTemporaryFile
 from tomllib import TOMLDecodeError
 from textwrap import dedent
 from uv import find_uv_bin
+import uvk
 
 from .parse import NoMetadata, parse_script_metadata, ScriptMetadataParseError
 
@@ -68,12 +68,14 @@ def get_script_metadata() -> str:
 
 
 def with_uvk() -> list[str]:
-    args_parent = psutil.Process().parent().cmdline()
-    try:
-        i = args_parent.index("--with-editable")
-        return args_parent[i : i + 2]
-    except ValueError:
+    path_uvk = Path(uvk.__file__).parent
+    if path_uvk.is_relative_to(Path(sys.prefix)):
         return ["--with", "uvk"]
+    while path_uvk.name:
+        if (path_uvk / "pyproject.toml").is_file():
+            return ["--with-editable", str(path_uvk)]
+        path_uvk = path_uvk.parent
+    raise RuntimeError("Selection of the dev uvk package is broken")
 
 
 def get_path_project(source: Path) -> Path | None:
