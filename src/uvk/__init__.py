@@ -404,7 +404,8 @@ def uvk(shell: InteractiveShell) -> Callable[[str, str], None]:
                         mean of convenience. Script metadata typos might prevent the kernel
                         from starting, and Jupyterhub platform, no feedback is provided anywhere
                         visible when such difficulties occur.
-                        """ + (
+                        """
+                        + (
                             ""
                             if is_rtd
                             else """\

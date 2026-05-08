@@ -20,7 +20,6 @@ def parse_args(args: list[str] | None = None) -> Namespace:
             help=app.__doc__,
             description=app.__doc__,
             aliases=getattr(app, "aliases", []),
-            deprecated=getattr(app, "deprecated", False),
         )
         app(parser_app)
     return parser_main.parse_args(args)
