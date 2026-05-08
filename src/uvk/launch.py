@@ -80,7 +80,7 @@ def with_uvk() -> list[str]:
             return ["--with-editable", str(path_uvk)]
         path_uvk = path_uvk.parent
     LOG.debug("Cannot find the root of uvk local project, so no development support")
-    raise RuntimeError("Selection of the dev uvk package is broken")
+    return ["--with", "uvk"]
 
 
 def get_path_project(source: Path) -> Path | None:
