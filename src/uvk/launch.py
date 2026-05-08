@@ -70,11 +70,16 @@ def get_script_metadata() -> str:
 def with_uvk() -> list[str]:
     path_uvk = Path(uvk.__file__).parent
     if path_uvk.is_relative_to(Path(sys.prefix)):
+        LOG.debug("uvk path is relative to prefix; no development support")
         return ["--with", "uvk"]
     while path_uvk.name:
         if (path_uvk / "pyproject.toml").is_file():
+            LOG.debug(
+                f"Found the probable root directory of a uvk local project, so let's use that: {path_uvk}"
+            )
             return ["--with-editable", str(path_uvk)]
         path_uvk = path_uvk.parent
+    LOG.debug("Cannot find the root of uvk local project, so no development support")
     raise RuntimeError("Selection of the dev uvk package is broken")
 
 
